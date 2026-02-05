@@ -19,6 +19,10 @@ def parse_args():
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
+        "--ssl-verify", action="store_true",
+        help="Verify TLS certificates (default: no verification)",
+    )
+    parser.add_argument(
         "--duration", type=float, default=10.0,
         help="Seconds to listen for events (default: 10)",
     )
@@ -45,7 +49,8 @@ def main():
     args = parse_args()
 
     try:
-        with Callbox(args.host, password=args.password, ssl=args.ssl) as cb:
+        with Callbox(args.host, password=args.password, ssl=args.ssl,
+                     ssl_verify=args.ssl_verify) as cb:
             # Register for channel constellation data
             print(f"Registering for channel: {args.channel}")
             try:

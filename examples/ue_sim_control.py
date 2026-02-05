@@ -19,6 +19,10 @@ def parse_args():
     parser.add_argument("--host", default="127.0.0.1", help="Callbox IP address")
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
+    parser.add_argument(
+        "--ssl-verify", action="store_true",
+        help="Verify TLS certificates (default: no verification)",
+    )
     return parser.parse_args()
 
 
@@ -26,7 +30,8 @@ def main():
     args = parse_args()
 
     try:
-        with Callbox(args.host, password=args.password, ssl=args.ssl) as cb:
+        with Callbox(args.host, password=args.password, ssl=args.ssl,
+                     ssl_verify=args.ssl_verify) as cb:
             # --- Query simulated UEs ---
             print("=" * 60)
             print("UE Simulator — Current UE State")

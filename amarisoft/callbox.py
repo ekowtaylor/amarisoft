@@ -56,6 +56,7 @@ class Callbox:
         ssl_context: _ssl.SSLContext | None = None,
         timeout: float = 10.0,
         auto_reconnect: bool = False,
+        ssl_verify: bool = False,
     ):
         """Initialize the Callbox interface.
 
@@ -72,6 +73,9 @@ class Callbox:
                 self-signed certificates).
             timeout: Default timeout in seconds for WebSocket operations.
             auto_reconnect: Automatically reconnect on send failure.
+            ssl_verify: Verify the server's TLS certificate. Defaults to
+                ``False`` so that self-signed certificates on the
+                Callbox are accepted without extra configuration.
         """
         self.host = host
         self.password = password
@@ -84,6 +88,7 @@ class Callbox:
             timeout=timeout,
             ssl_context=ssl_context,
             auto_reconnect=auto_reconnect,
+            ssl_verify=ssl_verify,
         )
 
         # Create WebSocket clients for each service

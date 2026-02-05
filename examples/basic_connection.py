@@ -25,16 +25,20 @@ def parse_args():
     parser.add_argument("--host", default="127.0.0.1", help="Callbox IP address")
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
+    parser.add_argument(
+        "--ssl-verify", action="store_true",
+        help="Verify TLS certificates (default: no verification)",
+    )
     return parser.parse_args()
 
 
-def example_connect_all(host, password, ssl):
+def example_connect_all(host, password, ssl, ssl_verify):
     """Connect to all services at once and print status."""
     print("=" * 60)
     print("Example 1: connect_all()")
     print("=" * 60)
 
-    cb = Callbox(host, password=password, ssl=ssl)
+    cb = Callbox(host, password=password, ssl=ssl, ssl_verify=ssl_verify)
     try:
         ready = cb.connect_all()
         print("\nReady messages from each service:")
@@ -54,13 +58,13 @@ def example_connect_all(host, password, ssl):
         print("\nAll connections closed.")
 
 
-def example_context_manager(host, password, ssl):
+def example_context_manager(host, password, ssl, ssl_verify):
     """Use the Callbox as a context manager."""
     print("\n" + "=" * 60)
     print("Example 2: Context manager usage")
     print("=" * 60)
 
-    with Callbox(host, password=password, ssl=ssl) as cb:
+    with Callbox(host, password=password, ssl=ssl, ssl_verify=ssl_verify) as cb:
         print("\nConnected via context manager.")
         print("Status:", cb.status)
 
@@ -71,13 +75,13 @@ def example_context_manager(host, password, ssl):
     print("Context manager exited — connections closed automatically.")
 
 
-def example_individual_connections(host, password, ssl):
+def example_individual_connections(host, password, ssl, ssl_verify):
     """Connect to services one at a time."""
     print("\n" + "=" * 60)
     print("Example 3: Individual service connections")
     print("=" * 60)
 
-    cb = Callbox(host, password=password, ssl=ssl)
+    cb = Callbox(host, password=password, ssl=ssl, ssl_verify=ssl_verify)
     try:
         # Connect only to the eNB
         enb_ready = cb.connect_enb()
@@ -99,9 +103,9 @@ def main():
     args = parse_args()
 
     try:
-        example_connect_all(args.host, args.password, args.ssl)
-        example_context_manager(args.host, args.password, args.ssl)
-        example_individual_connections(args.host, args.password, args.ssl)
+        example_connect_all(args.host, args.password, args.ssl, args.ssl_verify)
+        example_context_manager(args.host, args.password, args.ssl, args.ssl_verify)
+        example_individual_connections(args.host, args.password, args.ssl, args.ssl_verify)
     except AuthenticationError as e:
         print(f"\nAuthentication failed: {e}")
         print("Check the --password argument.")

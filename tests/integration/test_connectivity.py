@@ -96,10 +96,13 @@ class TestContextManager:
     """Test context manager usage."""
 
     def test_context_manager_connects_and_closes(
-        self, callbox_host, callbox_password, callbox_ssl
+        self, callbox_host, callbox_password, callbox_ssl, callbox_ssl_verify
     ):
         with Callbox(
-            callbox_host, password=callbox_password, ssl=callbox_ssl
+            callbox_host,
+            password=callbox_password,
+            ssl=callbox_ssl,
+            ssl_verify=callbox_ssl_verify,
         ) as cb:
             assert cb.status["enb"] is True
             assert cb.status["mme"] is True

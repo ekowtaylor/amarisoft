@@ -31,6 +31,12 @@ def pytest_addoption(parser):
         default=False,
         help="Use WSS (TLS)",
     )
+    parser.addoption(
+        "--ssl-verify",
+        action="store_true",
+        default=False,
+        help="Verify TLS certificates (default: no verification)",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -49,16 +55,26 @@ def callbox_ssl(request):
 
 
 @pytest.fixture(scope="session")
-def callbox(callbox_host, callbox_password, callbox_ssl):
+def callbox_ssl_verify(request):
+    return request.config.getoption("--ssl-verify")
+
+
+@pytest.fixture(scope="session")
+def callbox(callbox_host, callbox_password, callbox_ssl, callbox_ssl_verify):
     """Session-scoped Callbox connected to all services."""
-    cb = Callbox(callbox_host, password=callbox_password, ssl=callbox_ssl)
+    cb = Callbox(
+        callbox_host,
+        password=callbox_password,
+        ssl=callbox_ssl,
+        ssl_verify=callbox_ssl_verify,
+    )
     cb.connect_all()
     yield cb
     cb.close()
 
 
 @pytest.fixture(scope="session")
-def callbox_factory(callbox_host, callbox_password, callbox_ssl):
+def callbox_factory(callbox_host, callbox_password, callbox_ssl, callbox_ssl_verify):
     """Factory fixture that creates unconnected Callbox instances."""
     instances = []
 
@@ -67,6 +83,7 @@ def callbox_factory(callbox_host, callbox_password, callbox_ssl):
             "host": callbox_host,
             "password": callbox_password,
             "ssl": callbox_ssl,
+            "ssl_verify": callbox_ssl_verify,
         }
         kwargs.update(overrides)
         host = kwargs.pop("host")

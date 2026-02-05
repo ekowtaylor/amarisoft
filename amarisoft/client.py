@@ -44,6 +44,7 @@ class WebSocketClient:
         timeout: float = 10.0,
         ssl_context: _ssl.SSLContext | None = None,
         auto_reconnect: bool = False,
+        ssl_verify: bool = False,
     ):
         """
         Args:
@@ -54,16 +55,33 @@ class WebSocketClient:
             timeout: Default timeout in seconds for send/receive.
             ssl_context: Custom :class:`ssl.SSLContext` for TLS (e.g. to
                 trust self-signed certificates). If *None* and *ssl* is
-                True, the default context is used.
+                True, a context is created automatically — see
+                *ssl_verify*.
             auto_reconnect: Automatically reconnect on send failure.
+            ssl_verify: Verify the server's TLS certificate. When
+                ``False`` (the default) and no *ssl_context* is provided,
+                certificate verification is disabled — convenient for
+                Callboxes using self-signed certificates. Set to ``True``
+                to enforce standard certificate validation.
         """
         self.host = host
         self.port = port
         self.password = password
         self.ssl = ssl
         self.timeout = timeout
-        self.ssl_context = ssl_context
+        self.ssl_verify = ssl_verify
         self.auto_reconnect = auto_reconnect
+
+        # Build ssl_context: explicit context wins, otherwise honour ssl_verify
+        if ssl_context is not None:
+            self.ssl_context = ssl_context
+        elif ssl and not ssl_verify:
+            ctx = _ssl.SSLContext(_ssl.PROTOCOL_TLS_CLIENT)
+            ctx.check_hostname = False
+            ctx.verify_mode = _ssl.CERT_NONE
+            self.ssl_context = ctx
+        else:
+            self.ssl_context = None
 
         self._ws: websocket.WebSocket | None = None
         self._ready = False
