@@ -10,9 +10,16 @@ Demonstrates:
 
 import argparse
 import time
-from pprint import pprint
 
-from amarisoft import Callbox, AmariError, CommandError
+from amarisoft import (
+    Callbox,
+    AmariError,
+    CommandError,
+    InvalidParameterError,
+    CapabilityChecker,
+    RATType,
+    get_default_capabilities,
+)
 
 
 def parse_args():
@@ -80,19 +87,32 @@ def main():
         with Callbox(args.host, password=args.password, ssl=args.ssl,
                      ssl_verify=args.ssl_verify) as cb:
 
-            # --- Optionally pin MCS ---
+            # --- Optionally pin MCS with validation ---
             if args.cell_id is not None:
+                # Get checker for validation
+                checker = CapabilityChecker(get_default_capabilities())
+
                 if args.dl_mcs is not None:
-                    print(f"Setting DL MCS={args.dl_mcs} on cell {args.cell_id}")
+                    print(f"Validating and setting DL MCS={args.dl_mcs} on cell {args.cell_id}")
                     try:
+                        # Validate MCS is in valid LTE range (0-28)
+                        checker.validate_mcs(args.dl_mcs, rat=RATType.LTE)
                         cb.enb.set_dl_config(args.cell_id, pdsch_mcs=args.dl_mcs)
+                        print(f"  ✓ DL MCS set to {args.dl_mcs}")
+                    except InvalidParameterError as e:
+                        print(f"  ✗ Invalid MCS: {e}")
                     except CommandError as e:
                         print(f"  Warning: {e}")
 
                 if args.ul_mcs is not None:
-                    print(f"Setting UL MCS={args.ul_mcs} on cell {args.cell_id}")
+                    print(f"Validating and setting UL MCS={args.ul_mcs} on cell {args.cell_id}")
                     try:
+                        # Validate MCS is in valid LTE range (0-28)
+                        checker.validate_mcs(args.ul_mcs, rat=RATType.LTE)
                         cb.enb.set_ul_config(args.cell_id, pusch_mcs=args.ul_mcs)
+                        print(f"  ✓ UL MCS set to {args.ul_mcs}")
+                    except InvalidParameterError as e:
+                        print(f"  ✗ Invalid MCS: {e}")
                     except CommandError as e:
                         print(f"  Warning: {e}")
 

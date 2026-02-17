@@ -13,6 +13,25 @@ Example::
 """
 
 from .callbox import Callbox
+from .capabilities import (
+    CapabilityChecker,
+    CellConfig,
+    DeviceCapabilities,
+    DuplexMode,
+    LicenseInfo,
+    MIMOConfig,
+    RATType,
+    SDRInfo,
+    ServicePorts,
+    ValidationContext,
+    get_default_capabilities,
+    require_feature,
+    require_service,
+    validate_bandwidth,
+    validate_mcs_param,
+    validate_qci_param,
+    validate_rf_params,
+)
 from .client import WebSocketClient
 from .enb import ENBApi
 from .exceptions import (
@@ -24,16 +43,51 @@ from .exceptions import (
     InvalidParameterError,
 )
 from .ims import IMSApi
+from .logging import (
+    LogCollector,
+    LogEntry,
+    TestSession,
+    TestStep,
+    enable_file_logging,
+)
 from .mme import MMEApi
 from .ue import UEApi
 
 __all__ = [
+    # Main classes
     "Callbox",
     "WebSocketClient",
+    # API classes
     "ENBApi",
     "MMEApi",
     "IMSApi",
     "UEApi",
+    # Capabilities
+    "DeviceCapabilities",
+    "CapabilityChecker",
+    "ValidationContext",
+    "SDRInfo",
+    "LicenseInfo",
+    "CellConfig",
+    "ServicePorts",
+    "RATType",
+    "DuplexMode",
+    "MIMOConfig",
+    "get_default_capabilities",
+    # Validation decorators
+    "validate_rf_params",
+    "validate_mcs_param",
+    "validate_qci_param",
+    "validate_bandwidth",
+    "require_service",
+    "require_feature",
+    # Logging & Test Sessions
+    "TestSession",
+    "TestStep",
+    "LogCollector",
+    "LogEntry",
+    "enable_file_logging",
+    # Exceptions
     "AmariError",
     "AmariConnectionError",
     "AmariTimeoutError",

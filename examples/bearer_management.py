@@ -12,7 +12,14 @@ import argparse
 import time
 from pprint import pprint
 
-from amarisoft import Callbox, AmariError, CommandError
+from amarisoft import (
+    Callbox,
+    AmariError,
+    CommandError,
+    InvalidParameterError,
+    CapabilityChecker,
+    get_default_capabilities,
+)
 
 
 def parse_args():
@@ -25,6 +32,19 @@ def parse_args():
         help="Verify TLS certificates (default: no verification)",
     )
     return parser.parse_args()
+
+
+def validate_qci(qci, checker=None):
+    """Validate QCI and return info about the QCI class."""
+    if checker is None:
+        checker = CapabilityChecker(get_default_capabilities())
+
+    try:
+        checker.validate_qci(qci)
+        info = checker.get_qci_info(qci)
+        return True, info
+    except InvalidParameterError as e:
+        return False, str(e)
 
 
 def main():
@@ -70,18 +90,29 @@ def main():
             if enb_ue_list:
                 enb_ue_id = enb_ue_list[0].get("enb_ue_id")
 
-            # --- Activate dedicated bearer (from eNB side) ---
+            # --- Activate dedicated bearer with QCI validation ---
             if enb_ue_id is not None:
                 print("\n" + "=" * 60)
-                print(f"eNB — Activate dedicated bearer (QCI=1, enb_ue_id={enb_ue_id})")
+                print(f"eNB — Activate dedicated bearer (enb_ue_id={enb_ue_id})")
                 print("=" * 60)
-                try:
-                    result = cb.enb.ue_activate_dedicated_bearer(
-                        enb_ue_id=enb_ue_id, qci=1,
-                    )
-                    pprint(result)
-                except CommandError as e:
-                    print(f"Activation error: {e}")
+
+                # Create checker for QCI validation
+                checker = CapabilityChecker(get_default_capabilities())
+
+                # QCI 1 is for GBR conversational voice
+                qci = 1
+                valid, info = validate_qci(qci, checker)
+                if valid:
+                    print(f"QCI {qci}: {info.get('name', 'Valid')} ({info.get('type', 'unknown')})")
+                    try:
+                        result = cb.enb.ue_activate_dedicated_bearer(
+                            enb_ue_id=enb_ue_id, qci=qci,
+                        )
+                        pprint(result)
+                    except CommandError as e:
+                        print(f"Activation error: {e}")
+                else:
+                    print(f"Invalid QCI {qci}: {info}")
 
                 time.sleep(2)
 

@@ -5,15 +5,20 @@ Demonstrates:
 - System info and cell listing
 - Statistics with samples and RF data
 - Cell gain adjustment
-- RF parameter control
-- Downlink/uplink configuration
+- RF parameter control with validation
+- Downlink/uplink configuration with MCS validation
 - S1 and NG interface status
 """
 
 import argparse
 from pprint import pprint
 
-from amarisoft import Callbox, AmariError
+from amarisoft import (
+    Callbox,
+    AmariError,
+    InvalidParameterError,
+    ValidationContext,
+)
 
 
 def parse_args():
@@ -73,9 +78,33 @@ def main():
             rf = cb.enb.rf()
             pprint(rf)
 
-            # Set specific TX/RX gains (uncomment to use)
-            # rf_set = cb.enb.rf(tx_gain=60.0, rx_gain=60.0)
-            # pprint(rf_set)
+            # --- RF parameters with validation ---
+            print("\n" + "=" * 60)
+            print("RF Parameters with Validation")
+            print("=" * 60)
+
+            # Enable validation to prevent invalid RF settings
+            with ValidationContext(cb) as ctx:
+                print("\nValidating RF gains before applying...")
+
+                # Test wired configuration (safe for conducted testing)
+                test_configs = [
+                    {"tx_gain": 60, "rx_gain": 10, "mode": "wired", "desc": "Wired test (valid)"},
+                    {"tx_gain": 100, "rx_gain": 10, "mode": "wired", "desc": "TX too high for wired"},
+                ]
+
+                for config in test_configs:
+                    try:
+                        ctx.checker.validate_rf_gain(
+                            tx_gain=config["tx_gain"],
+                            rx_gain=config["rx_gain"],
+                            mode=config["mode"],
+                        )
+                        print(f"  ✓ {config['desc']}: tx={config['tx_gain']}, rx={config['rx_gain']}")
+                        # Uncomment to actually apply:
+                        # cb.enb.rf(tx_gain=config["tx_gain"], rx_gain=config["rx_gain"])
+                    except InvalidParameterError as e:
+                        print(f"  ✗ {config['desc']}: {e}")
 
             # --- DL/UL config ---
             print("\n" + "=" * 60)

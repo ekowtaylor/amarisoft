@@ -7,6 +7,7 @@ Demonstrates:
 - Version info from each service
 - Context manager usage
 - Individual service connections
+- Capability discovery and validation
 """
 
 import argparse
@@ -17,6 +18,7 @@ from amarisoft import (
     AmariConnectionError,
     AmariTimeoutError,
     AuthenticationError,
+    get_default_capabilities,
 )
 
 
@@ -99,13 +101,82 @@ def example_individual_connections(host, password, ssl, ssl_verify):
         cb.close()
 
 
+def example_capability_discovery(host, password, ssl, ssl_verify):
+    """Discover device capabilities and enable validation."""
+    print("\n" + "=" * 60)
+    print("Example 4: Capability discovery and validation")
+    print("=" * 60)
+
+    with Callbox(host, password=password, ssl=ssl, ssl_verify=ssl_verify) as cb:
+        # Discover capabilities from the connected device
+        print("\nDiscovering device capabilities...")
+        caps = cb.discover_capabilities()
+
+        print(f"\nDevice: {caps.hostname}")
+        print(f"Version: {caps.amarisoft_version}")
+        print(f"Max Bandwidth: {caps.max_bandwidth_mhz} MHz")
+        print(f"Max MIMO: {caps.max_mimo_layers} layers")
+        print(f"Supported RATs: {[r.value for r in caps.supported_rats]}")
+
+        # Enable validation to prevent invalid configurations
+        print("\nEnabling parameter validation...")
+        checker = cb.enable_validation()
+
+        # Example: validate MCS before applying
+        print("\nValidating MCS=15 for LTE...")
+        from amarisoft import RATType
+        try:
+            checker.validate_mcs(15, rat=RATType.LTE)
+            print("  ✓ MCS=15 is valid")
+        except Exception as e:
+            print(f"  ✗ Invalid: {e}")
+
+        print(f"\nValidation enabled: {cb.validation_enabled}")
+
+
+def example_offline_validation():
+    """Use default capabilities for offline validation."""
+    print("\n" + "=" * 60)
+    print("Example 5: Offline validation (no device required)")
+    print("=" * 60)
+
+    # Get default capabilities for CBM-2024121101
+    caps = get_default_capabilities()
+
+    print(f"\nDefault device: {caps.hostname}")
+    print(f"Max Bandwidth: {caps.max_bandwidth_mhz} MHz")
+
+    # Create a checker for validation
+    from amarisoft import CapabilityChecker, InvalidParameterError
+    checker = CapabilityChecker(caps)
+
+    # Validate RF gain settings
+    print("\nValidating RF gains for wired testing:")
+    try:
+        checker.validate_rf_gain(tx_gain=60, rx_gain=10, mode="wired")
+        print("  ✓ tx_gain=60, rx_gain=10 - Valid")
+    except InvalidParameterError as e:
+        print(f"  ✗ {e}")
+
+    print("\nValidating invalid RF gain:")
+    try:
+        checker.validate_rf_gain(tx_gain=100, mode="wired")
+        print("  ✓ Valid")
+    except InvalidParameterError as e:
+        print(f"  ✗ Caught: {e}")
+
+
 def main():
     args = parse_args()
+
+    # Offline validation example runs without device
+    example_offline_validation()
 
     try:
         example_connect_all(args.host, args.password, args.ssl, args.ssl_verify)
         example_context_manager(args.host, args.password, args.ssl, args.ssl_verify)
         example_individual_connections(args.host, args.password, args.ssl, args.ssl_verify)
+        example_capability_discovery(args.host, args.password, args.ssl, args.ssl_verify)
     except AuthenticationError as e:
         print(f"\nAuthentication failed: {e}")
         print("Check the --password argument.")

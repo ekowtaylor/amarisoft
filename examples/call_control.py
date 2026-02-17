@@ -12,7 +12,14 @@ import argparse
 import time
 from pprint import pprint
 
-from amarisoft import Callbox, AmariError, CommandError
+from amarisoft import (
+    Callbox,
+    AmariError,
+    CommandError,
+    InvalidParameterError,
+    CapabilityChecker,
+    get_default_capabilities,
+)
 
 
 def parse_args():
@@ -43,12 +50,39 @@ def find_registered_impu(cb):
 def main():
     args = parse_args()
 
+    # Pre-validate IMS service and VoLTE feature requirement
+    checker = CapabilityChecker(get_default_capabilities())
+    print("=" * 60)
+    print("Pre-flight checks for VoLTE call")
+    print("=" * 60)
+
+    try:
+        checker.validate_service_available("ims")
+        print("  ✓ IMS service expected to be available")
+    except InvalidParameterError as e:
+        print(f"  ⚠ Warning: {e}")
+        print("    IMS may not be connected on this device")
+
+    try:
+        checker.validate_feature("volte")
+        print("  ✓ VoLTE feature expected to be enabled")
+    except InvalidParameterError as e:
+        print(f"  ⚠ Warning: {e}")
+        print("    VoLTE calls may not be supported")
+
     try:
         with Callbox(args.host, password=args.password, ssl=args.ssl,
                      ssl_verify=args.ssl_verify) as cb:
 
+            # Verify IMS is actually connected
+            if not cb.status.get("ims", False):
+                print("\n⚠ Warning: IMS service not connected!")
+                print("  VoLTE calls require IMS. Check your configuration.")
+                print("  Note: IMS may be on port 9003 instead of default 9002")
+                print("  Try: Callbox(host, ims_port=9003)")
+
             # Register for call/dialog events so we receive updates
-            print("Registering for dialog events ...")
+            print("\nRegistering for dialog events ...")
             try:
                 cb.ims.register_events("dialog")
             except CommandError as e:

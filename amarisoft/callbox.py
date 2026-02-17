@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import logging
 import ssl as _ssl
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from .client import WebSocketClient
 from .enb import ENBApi
 from .ims import IMSApi
 from .mme import MMEApi
 from .ue import UEApi
+
+if TYPE_CHECKING:
+    from .capabilities import CapabilityChecker, DeviceCapabilities
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +44,15 @@ class Callbox:
 
         with Callbox("192.168.1.100") as cb:
             cb.enb.stats()
+
+    With capability validation::
+
+        from amarisoft.capabilities import ValidationContext
+
+        with Callbox("192.168.1.80", ims_port=9003) as cb:
+            with ValidationContext(cb) as ctx:
+                # Operations are validated against device capabilities
+                cb.enb.rf(tx_gain=60)  # Validated
     """
 
     def __init__(
@@ -82,6 +94,10 @@ class Callbox:
         self.ssl = ssl
         self.timeout = timeout
 
+        # Capability checker (set by ValidationContext or enable_validation)
+        self._capability_checker: CapabilityChecker | None = None
+        self._capabilities: DeviceCapabilities | None = None
+
         kwargs: dict[str, Any] = dict(
             password=password,
             ssl=ssl,
@@ -102,6 +118,12 @@ class Callbox:
         self.mme = MMEApi(self._mme_client)
         self.ims = IMSApi(self._ims_client)
         self.ue = UEApi(self._ue_client)
+
+        # Set callbox reference on API instances for validation
+        self.enb._callbox = self
+        self.mme._callbox = self
+        self.ims._callbox = self
+        self.ue._callbox = self
 
         self._clients = {
             "enb": self._enb_client,
@@ -157,6 +179,9 @@ class Callbox:
             except Exception as e:
                 logger.warning("Error closing %s: %s", name, e)
 
+    # Alias for close() for consistency
+    disconnect_all = close
+
     @property
     def status(self) -> dict[str, bool]:
         """Return connection status for each service."""
@@ -192,6 +217,67 @@ class Callbox:
             )
         return client.send(message)
 
+    # ──────────────────────────────────────────────
+    # Capability Management
+    # ──────────────────────────────────────────────
+
+    def discover_capabilities(self) -> "DeviceCapabilities":
+        """Discover and cache device capabilities.
+
+        Returns:
+            DeviceCapabilities instance with discovered constraints.
+
+        Note:
+            Requires at least one service to be connected.
+        """
+        from .capabilities import DeviceCapabilities
+
+        self._capabilities = DeviceCapabilities.from_callbox(self)
+        return self._capabilities
+
+    @property
+    def capabilities(self) -> "DeviceCapabilities | None":
+        """Return cached device capabilities, or None if not discovered."""
+        return self._capabilities
+
+    def enable_validation(
+        self,
+        capabilities: "DeviceCapabilities | None" = None,
+    ) -> "CapabilityChecker":
+        """Enable parameter validation on this Callbox.
+
+        Args:
+            capabilities: Optional capabilities to use. If None,
+                discovers from the connected device.
+
+        Returns:
+            The CapabilityChecker instance.
+
+        Example::
+
+            cb = Callbox("192.168.1.80")
+            cb.connect_all()
+            checker = cb.enable_validation()
+            # Now API calls will be validated
+        """
+        from .capabilities import CapabilityChecker
+
+        if capabilities is None:
+            capabilities = self.discover_capabilities()
+
+        self._capabilities = capabilities
+        self._capability_checker = CapabilityChecker(capabilities)
+        return self._capability_checker
+
+    def disable_validation(self) -> None:
+        """Disable parameter validation."""
+        self._capability_checker = None
+
+    @property
+    def validation_enabled(self) -> bool:
+        """Return True if validation is enabled."""
+        return self._capability_checker is not None
+
     def __enter__(self) -> Callbox:
         self.connect_all()
         return self
@@ -201,4 +287,5 @@ class Callbox:
 
     def __repr__(self) -> str:
         connected = sum(1 for c in self._clients.values() if c.connected)
-        return f"Callbox({self.host}, {connected}/{len(self._clients)} connected)"
+        validation = " [validation]" if self.validation_enabled else ""
+        return f"Callbox({self.host}, {connected}/{len(self._clients)} connected{validation})"
