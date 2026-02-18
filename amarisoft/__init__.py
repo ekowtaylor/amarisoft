@@ -53,15 +53,32 @@ from .logging import (
 from .mme import MMEApi
 from .ue import UEApi
 
+# SSH Client (optional, for system administration)
+from .ssh import (
+    NetworkInterface,
+    PCIeDevice,
+    SDRCard,
+    SSHClient,
+    SystemInfo,
+    USBDevice,
+)
+
 __all__ = [
-    # Main classes
+    # Main Classes
     "Callbox",
     "WebSocketClient",
-    # API classes
+    # Service APIs
     "ENBApi",
     "MMEApi",
     "IMSApi",
     "UEApi",
+    # SSH Client
+    "SSHClient",
+    "SDRCard",
+    "SystemInfo",
+    "PCIeDevice",
+    "USBDevice",
+    "NetworkInterface",
     # Capabilities
     "DeviceCapabilities",
     "CapabilityChecker",

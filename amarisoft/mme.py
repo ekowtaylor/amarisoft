@@ -245,3 +245,118 @@ class MMEApi(ServiceApi):
         }
         msg.update(params)
         return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # APN Configuration Helpers
+    # ──────────────────────────────────────────────
+
+    def set_default_apn(
+        self,
+        apn: str = "default",
+        pdn_type: str = "ipv4",
+        first_ip: str | None = None,
+        last_ip: str | None = None,
+        dns: str | list[str] | None = None,
+        qci: int = 9,
+        priority_level: int = 15,
+    ) -> dict[str, Any]:
+        """Set the default APN configuration.
+
+        This is a convenience method that configures a default APN with
+        common settings. For more advanced configuration, edit the MME
+        config file directly via SSH.
+
+        Args:
+            apn: Access Point Name (default: "default").
+            pdn_type: PDN type - "ipv4", "ipv6", or "ipv4v6" (default: "ipv4").
+            first_ip: First IP address in the pool (e.g., "192.168.2.2").
+            last_ip: Last IP address in the pool (e.g., "192.168.2.254").
+            dns: DNS server address(es). Can be a string or list of strings.
+                Example: "8.8.8.8" or ["8.8.8.8", "8.8.4.4"]
+            qci: QoS Class Identifier (default: 9 for best-effort).
+                Common values:
+                - 1: Conversational Voice
+                - 5: IMS Signaling
+                - 9: Best Effort (default internet)
+            priority_level: ARP priority level 1-15 (default: 15, lowest).
+
+        Returns:
+            Response from the MME.
+
+        Example::
+
+            # Set a simple default APN
+            mme.set_default_apn()
+
+            # Set internet APN with custom IP pool
+            mme.set_default_apn(
+                apn="internet",
+                first_ip="192.168.3.2",
+                last_ip="192.168.3.254",
+                dns="8.8.8.8"
+            )
+
+            # Set IMS APN for VoLTE
+            mme.set_default_apn(
+                apn="ims",
+                pdn_type="ipv4v6",
+                qci=5,  # IMS signaling
+                priority_level=1
+            )
+
+        Note:
+            This method uses the pdn_list Remote API command. For persistent
+            changes, you should modify the MME config file directly:
+
+            .. code-block:: bash
+
+                ssh root@<callbox_ip>
+                vi /root/mme/config/mme.cfg
+                # Edit the pdn_list section
+        """
+        msg: dict[str, Any] = {
+            "message": "pdn_list",
+            "apn": apn,
+            "pdn_type": pdn_type,
+        }
+
+        if first_ip is not None:
+            msg["first_ip_addr"] = first_ip
+        if last_ip is not None:
+            msg["last_ip_addr"] = last_ip
+        if dns is not None:
+            msg["dns_addr"] = dns
+
+        # QoS parameters
+        msg["qci"] = qci
+        msg["priority_level"] = priority_level
+
+        return self._client.send(msg)
+
+    def get_apn_sessions(self, apn: str | None = None) -> list[dict[str, Any]]:
+        """Get active PDN sessions, optionally filtered by APN.
+
+        Args:
+            apn: Filter by APN name. If None, returns all sessions.
+
+        Returns:
+            List of active PDN sessions.
+
+        Example::
+
+            # Get all sessions
+            sessions = mme.get_apn_sessions()
+
+            # Get only IMS sessions
+            ims_sessions = mme.get_apn_sessions(apn="ims")
+        """
+        result = self.session_get()
+        sessions = result.get("session_list", result.get("pdn_list", []))
+
+        if apn is not None:
+            sessions = [
+                s for s in sessions
+                if s.get("apn") == apn or s.get("access_point_name") == apn
+            ]
+
+        return sessions

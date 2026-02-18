@@ -174,3 +174,110 @@ class TestPdnList:
             "apn": "ims",
             "esm_procedure_filter": "skip",
         })
+
+
+class TestSetDefaultApn:
+    def test_minimal(self, mock_client, mme):
+        mme.set_default_apn()
+        mock_client.send.assert_called_once_with({
+            "message": "pdn_list",
+            "apn": "default",
+            "pdn_type": "ipv4",
+            "qci": 9,
+            "priority_level": 15,
+        })
+
+    def test_custom_apn_name(self, mock_client, mme):
+        mme.set_default_apn(apn="internet")
+        sent = mock_client.send.call_args[0][0]
+        assert sent["apn"] == "internet"
+
+    def test_with_ip_pool(self, mock_client, mme):
+        mme.set_default_apn(
+            apn="internet",
+            first_ip="192.168.3.2",
+            last_ip="192.168.3.254",
+        )
+        sent = mock_client.send.call_args[0][0]
+        assert sent["first_ip_addr"] == "192.168.3.2"
+        assert sent["last_ip_addr"] == "192.168.3.254"
+
+    def test_with_dns_string(self, mock_client, mme):
+        mme.set_default_apn(dns="8.8.8.8")
+        sent = mock_client.send.call_args[0][0]
+        assert sent["dns_addr"] == "8.8.8.8"
+
+    def test_with_dns_list(self, mock_client, mme):
+        mme.set_default_apn(dns=["8.8.8.8", "8.8.4.4"])
+        sent = mock_client.send.call_args[0][0]
+        assert sent["dns_addr"] == ["8.8.8.8", "8.8.4.4"]
+
+    def test_ipv4v6_type(self, mock_client, mme):
+        mme.set_default_apn(apn="ims", pdn_type="ipv4v6")
+        sent = mock_client.send.call_args[0][0]
+        assert sent["pdn_type"] == "ipv4v6"
+
+    def test_custom_qos(self, mock_client, mme):
+        mme.set_default_apn(apn="ims", qci=5, priority_level=1)
+        sent = mock_client.send.call_args[0][0]
+        assert sent["qci"] == 5
+        assert sent["priority_level"] == 1
+
+    def test_full_config(self, mock_client, mme):
+        mme.set_default_apn(
+            apn="internet",
+            pdn_type="ipv4",
+            first_ip="192.168.3.2",
+            last_ip="192.168.3.254",
+            dns="8.8.8.8",
+            qci=9,
+            priority_level=15,
+        )
+        mock_client.send.assert_called_once_with({
+            "message": "pdn_list",
+            "apn": "internet",
+            "pdn_type": "ipv4",
+            "first_ip_addr": "192.168.3.2",
+            "last_ip_addr": "192.168.3.254",
+            "dns_addr": "8.8.8.8",
+            "qci": 9,
+            "priority_level": 15,
+        })
+
+
+class TestGetApnSessions:
+    def test_returns_all_sessions(self, mock_client, mme):
+        mock_client.send.return_value = {
+            "session_list": [
+                {"imsi": "001", "apn": "internet"},
+                {"imsi": "002", "apn": "ims"},
+            ]
+        }
+        sessions = mme.get_apn_sessions()
+        assert len(sessions) == 2
+
+    def test_filter_by_apn(self, mock_client, mme):
+        mock_client.send.return_value = {
+            "session_list": [
+                {"imsi": "001", "apn": "internet"},
+                {"imsi": "002", "apn": "ims"},
+                {"imsi": "003", "apn": "internet"},
+            ]
+        }
+        sessions = mme.get_apn_sessions(apn="internet")
+        assert len(sessions) == 2
+        assert all(s["apn"] == "internet" for s in sessions)
+
+    def test_empty_sessions(self, mock_client, mme):
+        mock_client.send.return_value = {}
+        sessions = mme.get_apn_sessions()
+        assert sessions == []
+
+    def test_uses_access_point_name_key(self, mock_client, mme):
+        mock_client.send.return_value = {
+            "session_list": [
+                {"imsi": "001", "access_point_name": "internet"},
+            ]
+        }
+        sessions = mme.get_apn_sessions(apn="internet")
+        assert len(sessions) == 1

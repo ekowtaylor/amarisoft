@@ -75,6 +75,7 @@ class SDRInfo:
     pcie_lanes: int = 1
     max_bandwidth_mhz: int = 100
     max_mimo: MIMOConfig = MIMOConfig.MIMO_4x4
+    board_revision: str = "0x0"
 
     @classmethod
     def from_dict(cls, data: dict[str, Any], device_id: int = 0) -> "SDRInfo":
@@ -90,6 +91,50 @@ class SDRInfo:
             fpga_revision=data.get("fpga_revision", "unknown"),
             software_version=data.get("software_version", "unknown"),
             dna=data.get("dna", "unknown"),
+            board_revision=data.get("board_revision", "0x0"),
+            max_bandwidth_mhz=100 if board_type == "SDR100" else 50,
+        )
+
+    @classmethod
+    def from_log_output(cls, log_text: str, device_id: int = 0) -> "SDRInfo | None":
+        """Parse SDR info from OTS log output.
+
+        Args:
+            log_text: Text from /var/log/lte/ots.log containing SDR info.
+            device_id: Device ID to assign.
+
+        Returns:
+            SDRInfo if parsed successfully, None otherwise.
+        """
+        import re
+
+        # Extract fields using regex
+        board_id_match = re.search(r"Board ID:\s*(0x[0-9a-fA-F]+)\s*\((\w+)\)", log_text)
+        serial_match = re.search(r"Serial\s*'([^']+)'", log_text)
+        fpga_match = re.search(r"FPGA revision:\s*([^\n(]+)", log_text)
+        pcie_match = re.search(r"PCIe.*gen(\d+)\s*x(\d+)", log_text)
+        board_rev_match = re.search(r"Board revision:\s*(0x[0-9a-fA-F]+)", log_text)
+
+        if not board_id_match:
+            return None
+
+        board_id = board_id_match.group(1)
+        board_type = board_id_match.group(2)
+
+        pcie_gen = int(pcie_match.group(1)) if pcie_match else 2
+        pcie_lanes = int(pcie_match.group(2)) if pcie_match else 1
+
+        return cls(
+            device_id=device_id,
+            board_id=board_id,
+            board_type=board_type,
+            serial=serial_match.group(1) if serial_match else "unknown",
+            fpga_revision=fpga_match.group(1).strip() if fpga_match else "unknown",
+            software_version="unknown",
+            dna="unknown",
+            board_revision=board_rev_match.group(1) if board_rev_match else "0x0",
+            pcie_gen=pcie_gen,
+            pcie_lanes=pcie_lanes,
             max_bandwidth_mhz=100 if board_type == "SDR100" else 50,
         )
 
@@ -105,6 +150,21 @@ class LicenseInfo:
     max_cells: int = 1
     max_bandwidth_mhz: int = 40
     features: dict[str, bool] = field(default_factory=dict)
+
+    @property
+    def has_ue_sim(self) -> bool:
+        """Check if UE simulator is licensed."""
+        return "lteue" in self.products or "uesim" in self.products
+
+    @property
+    def has_ims(self) -> bool:
+        """Check if IMS is licensed."""
+        return "lteims" in self.products
+
+    @property
+    def has_5gc(self) -> bool:
+        """Check if 5G Core is licensed."""
+        return "lte5gc" in self.products or "amf" in self.products
 
     @classmethod
     def from_dict(cls, data: dict[str, Any]) -> "LicenseInfo":
@@ -122,7 +182,7 @@ class LicenseInfo:
             user_name=data.get("user_name", "unknown"),
             license_uid=data.get("license_uid", "unknown"),
             valid_until=data.get("version", "unknown"),
-            products=[p.strip() for p in products if p.strip()],
+            products=[p.strip().lower() for p in products if p.strip()],
             rat_support=rat_list,
             max_cells=int(data.get("cell_max", 1)),
             max_bandwidth_mhz=int(data.get("bandwidth_max", 40)),
@@ -300,10 +360,25 @@ class DeviceCapabilities:
         try:
             license_data = callbox.ims.license()
             if license_data:
-                self.license_info = LicenseInfo.from_dict(license_data)
+                # Parse products from comma-separated string
+                products_str = license_data.get("products", "")
+                products = [p.strip().lower() for p in products_str.split(",") if p.strip()]
+
+                self.license_info = LicenseInfo(
+                    user_name=license_data.get("user", "unknown"),
+                    license_uid=license_data.get("uid", "unknown"),
+                    valid_until=license_data.get("validity", "unknown"),
+                    products=products,
+                    rat_support=[RATType.LTE],  # Default, could be extended
+                    max_cells=1,
+                    max_bandwidth_mhz=120,  # Default for Meta license
+                )
+
+                # Check for NR support in products
+                if any("nr" in p or "5g" in p for p in products):
+                    self.license_info.rat_support.append(RATType.NR)
+
                 self.supported_rats = self.license_info.rat_support
-                self.max_bandwidth_mhz = self.license_info.max_bandwidth_mhz
-                self.max_cells = self.license_info.max_cells
         except Exception:
             pass
 
@@ -333,6 +408,16 @@ class DeviceCapabilities:
         self.features.setdefault("carrier_aggregation", self.max_cells > 1)
         self.features.setdefault("endc", RATType.NR in self.supported_rats)
         self.features.setdefault("volte", self.services_available.get("ims", False))
+
+        # UE Simulator support (from license)
+        if self.license_info:
+            self.features.setdefault("ue_sim", self.license_info.has_ue_sim)
+            self.features.setdefault("ims", self.license_info.has_ims)
+            self.features.setdefault("5gc", self.license_info.has_5gc)
+        else:
+            self.features.setdefault("ue_sim", False)
+            self.features.setdefault("ims", self.services_available.get("ims", False))
+            self.features.setdefault("5gc", False)
 
     def summary(self) -> str:
         """Generate a human-readable summary of capabilities."""
