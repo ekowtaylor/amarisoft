@@ -474,3 +474,529 @@ class ENBApi(ServiceApi):
         }
         msg.update(params)
         return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Cell Control (Additional)
+    # ──────────────────────────────────────────────
+
+    def cell_ul_disable(
+        self,
+        cell_id: int,
+        disable: bool = True,
+    ) -> dict[str, Any]:
+        """Disable/enable uplink for a cell.
+
+        Args:
+            cell_id: Target cell identifier.
+            disable: True to disable UL, False to enable.
+        """
+        return self._client.send({
+            "message": "cell_ul_disable",
+            "cell_id": cell_id,
+            "disable": disable,
+        })
+
+    def noise_level(
+        self,
+        cell_id: int | None = None,
+        noise: float | None = None,
+    ) -> dict[str, Any]:
+        """Get or set the noise level for a cell.
+
+        Args:
+            cell_id: Target cell identifier.
+            noise: Noise level in dB to set.
+        """
+        msg: dict[str, Any] = {"message": "noise_level"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        if noise is not None:
+            msg["noise"] = noise
+        return self._client.send(msg)
+
+    def snr(
+        self,
+        enb_ue_id: int | None = None,
+        cell_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Get Signal-to-Noise Ratio information.
+
+        Args:
+            enb_ue_id: Filter by UE identifier.
+            cell_id: Filter by cell identifier.
+        """
+        msg: dict[str, Any] = {"message": "snr"}
+        if enb_ue_id is not None:
+            msg["enb_ue_id"] = enb_ue_id
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    def scells_act_deact(
+        self,
+        enb_ue_id: int,
+        scell_ids: list[int],
+        activate: bool = True,
+    ) -> dict[str, Any]:
+        """Activate or deactivate secondary cells (carrier aggregation).
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+            scell_ids: List of secondary cell IDs.
+            activate: True to activate, False to deactivate.
+        """
+        return self._client.send({
+            "message": "scells_act_deact",
+            "enb_ue_id": enb_ue_id,
+            "scell_id": scell_ids,
+            "activate": activate,
+        })
+
+    # ──────────────────────────────────────────────
+    # RF Control (Additional)
+    # ──────────────────────────────────────────────
+
+    def rf_gain(
+        self,
+        tx_gain: float | None = None,
+        rx_gain: float | None = None,
+    ) -> dict[str, Any]:
+        """Get or set RF gain values.
+
+        Args:
+            tx_gain: Transmit gain in dB.
+            rx_gain: Receive gain in dB.
+        """
+        msg: dict[str, Any] = {"message": "rf_gain"}
+        if tx_gain is not None:
+            msg["tx_gain"] = tx_gain
+        if rx_gain is not None:
+            msg["rx_gain"] = rx_gain
+        return self._client.send(msg)
+
+    def rf_power(
+        self,
+        cell_id: int | None = None,
+    ) -> dict[str, Any]:
+        """Get RF power information.
+
+        Args:
+            cell_id: Filter by cell identifier.
+        """
+        msg: dict[str, Any] = {"message": "rf_power"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Handover / Mobility
+    # ──────────────────────────────────────────────
+
+    def handover(
+        self,
+        enb_ue_id: int,
+        target_cell_id: int,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Initiate handover for a UE.
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+            target_cell_id: Target cell ID for handover.
+            **params: Additional handover parameters.
+        """
+        msg: dict[str, Any] = {
+            "message": "handover",
+            "enb_ue_id": enb_ue_id,
+            "target_cell_id": target_cell_id,
+        }
+        msg.update(params)
+        return self._client.send(msg)
+
+    def nr_pscell_change(
+        self,
+        enb_ue_id: int,
+        target_cell_id: int,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Change PSCell for NR (5G) UE.
+
+        Args:
+            enb_ue_id: The gNB UE identifier.
+            target_cell_id: Target PSCell ID.
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {
+            "message": "nr_pscell_change",
+            "enb_ue_id": enb_ue_id,
+            "target_cell_id": target_cell_id,
+        }
+        msg.update(params)
+        return self._client.send(msg)
+
+    def mr_dc_scg_release(
+        self,
+        enb_ue_id: int,
+    ) -> dict[str, Any]:
+        """Release SCG (Secondary Cell Group) for MR-DC UE.
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+        """
+        return self._client.send({
+            "message": "mr_dc_scg_release",
+            "enb_ue_id": enb_ue_id,
+        })
+
+    def mr_dc_split_dl_ratio_change(
+        self,
+        enb_ue_id: int,
+        ratio: int,
+    ) -> dict[str, Any]:
+        """Change DL split ratio for MR-DC UE.
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+            ratio: Split ratio percentage (0-100).
+        """
+        return self._client.send({
+            "message": "mr_dc_split_dl_ratio_change",
+            "enb_ue_id": enb_ue_id,
+            "ratio": ratio,
+        })
+
+    # ──────────────────────────────────────────────
+    # Neighbor Cell Management
+    # ──────────────────────────────────────────────
+
+    def ncell_list_add(
+        self,
+        cell_id: int,
+        ncell: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Add a neighbor cell to the neighbor list.
+
+        Args:
+            cell_id: Source cell identifier.
+            ncell: Neighbor cell configuration.
+        """
+        return self._client.send({
+            "message": "ncell_list_add",
+            "cell_id": cell_id,
+            "ncell": ncell,
+        })
+
+    def ncell_list_del(
+        self,
+        cell_id: int,
+        ncell_id: int,
+    ) -> dict[str, Any]:
+        """Remove a neighbor cell from the neighbor list.
+
+        Args:
+            cell_id: Source cell identifier.
+            ncell_id: Neighbor cell identifier to remove.
+        """
+        return self._client.send({
+            "message": "ncell_list_del",
+            "cell_id": cell_id,
+            "ncell_id": ncell_id,
+        })
+
+    # ──────────────────────────────────────────────
+    # X2 Interface
+    # ──────────────────────────────────────────────
+
+    def x2_connect(self, peer_addr: str | None = None) -> dict[str, Any]:
+        """Connect to peer eNB via X2 interface.
+
+        Args:
+            peer_addr: Peer eNB address (optional).
+        """
+        msg: dict[str, Any] = {"message": "x2connect"}
+        if peer_addr is not None:
+            msg["peer_addr"] = peer_addr
+        return self._client.send(msg)
+
+    def x2_disconnect(self, peer_addr: str | None = None) -> dict[str, Any]:
+        """Disconnect from peer eNB via X2 interface.
+
+        Args:
+            peer_addr: Peer eNB address (optional).
+        """
+        msg: dict[str, Any] = {"message": "x2disconnect"}
+        if peer_addr is not None:
+            msg["peer_addr"] = peer_addr
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Xn Interface (5G)
+    # ──────────────────────────────────────────────
+
+    def xn_status(self) -> dict[str, Any]:
+        """Query Xn interface status."""
+        return self._client.send({"message": "xn"})
+
+    def xn_connect(self, peer_addr: str | None = None) -> dict[str, Any]:
+        """Connect to peer gNB via Xn interface.
+
+        Args:
+            peer_addr: Peer gNB address (optional).
+        """
+        msg: dict[str, Any] = {"message": "xnconnect"}
+        if peer_addr is not None:
+            msg["peer_addr"] = peer_addr
+        return self._client.send(msg)
+
+    def xn_disconnect(self, peer_addr: str | None = None) -> dict[str, Any]:
+        """Disconnect from peer gNB via Xn interface.
+
+        Args:
+            peer_addr: Peer gNB address (optional).
+        """
+        msg: dict[str, Any] = {"message": "xndisconnect"}
+        if peer_addr is not None:
+            msg["peer_addr"] = peer_addr
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # S1 Interface (Additional)
+    # ──────────────────────────────────────────────
+
+    def s1_add(
+        self,
+        mme_addr: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Add an MME to S1 interface.
+
+        Args:
+            mme_addr: MME IP address.
+            **params: Additional MME parameters.
+        """
+        msg: dict[str, Any] = {
+            "message": "s1add",
+            "mme_addr": mme_addr,
+        }
+        msg.update(params)
+        return self._client.send(msg)
+
+    def s1_delete(
+        self,
+        mme_addr: str,
+    ) -> dict[str, Any]:
+        """Remove an MME from S1 interface.
+
+        Args:
+            mme_addr: MME IP address to remove.
+        """
+        return self._client.send({
+            "message": "s1delete",
+            "mme_addr": mme_addr,
+        })
+
+    def s1_reset(
+        self,
+        mme_addr: str | None = None,
+    ) -> dict[str, Any]:
+        """Reset S1 interface.
+
+        Args:
+            mme_addr: Specific MME to reset (optional).
+        """
+        msg: dict[str, Any] = {"message": "s1_reset"}
+        if mme_addr is not None:
+            msg["mme_addr"] = mme_addr
+        return self._client.send(msg)
+
+    def s1_enb_config_upd(self) -> dict[str, Any]:
+        """Send eNB Configuration Update to MME."""
+        return self._client.send({"message": "s1_enb_config_upd"})
+
+    # ──────────────────────────────────────────────
+    # NG Interface (Additional)
+    # ──────────────────────────────────────────────
+
+    def ng_add(
+        self,
+        amf_addr: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Add an AMF to NG interface.
+
+        Args:
+            amf_addr: AMF IP address.
+            **params: Additional AMF parameters.
+        """
+        msg: dict[str, Any] = {
+            "message": "ngadd",
+            "amf_addr": amf_addr,
+        }
+        msg.update(params)
+        return self._client.send(msg)
+
+    def ng_delete(
+        self,
+        amf_addr: str,
+    ) -> dict[str, Any]:
+        """Remove an AMF from NG interface.
+
+        Args:
+            amf_addr: AMF IP address to remove.
+        """
+        return self._client.send({
+            "message": "ngdelete",
+            "amf_addr": amf_addr,
+        })
+
+    # ──────────────────────────────────────────────
+    # M2 Interface (MBMS)
+    # ──────────────────────────────────────────────
+
+    def m2_status(self) -> dict[str, Any]:
+        """Query M2 interface status (MBMS)."""
+        return self._client.send({"message": "m2"})
+
+    def m2_connect(self) -> dict[str, Any]:
+        """Connect to MCE via M2 interface."""
+        return self._client.send({"message": "m2connect"})
+
+    def m2_disconnect(self) -> dict[str, Any]:
+        """Disconnect from MCE via M2 interface."""
+        return self._client.send({"message": "m2disconnect"})
+
+    # ──────────────────────────────────────────────
+    # SIB (Additional)
+    # ──────────────────────────────────────────────
+
+    def sib14(
+        self,
+        cell_id: int,
+        enable: bool = True,
+    ) -> dict[str, Any]:
+        """Enable/disable SIB14 (ETWS/CMAS) for a cell.
+
+        Args:
+            cell_id: Target cell identifier.
+            enable: True to enable, False to disable.
+        """
+        return self._client.send({
+            "message": "sib14",
+            "cell_id": cell_id,
+            "enable": enable,
+        })
+
+    # ──────────────────────────────────────────────
+    # RLC Configuration
+    # ──────────────────────────────────────────────
+
+    def rlc_drop_rate(
+        self,
+        dl_drop_rate: float | None = None,
+        ul_drop_rate: float | None = None,
+    ) -> dict[str, Any]:
+        """Set RLC PDU drop rate for testing.
+
+        Args:
+            dl_drop_rate: Downlink drop rate (0.0-1.0).
+            ul_drop_rate: Uplink drop rate (0.0-1.0).
+        """
+        msg: dict[str, Any] = {"message": "rlc_drop_rate"}
+        if dl_drop_rate is not None:
+            msg["dl_drop_rate"] = dl_drop_rate
+        if ul_drop_rate is not None:
+            msg["ul_drop_rate"] = ul_drop_rate
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # NTN (Non-Terrestrial Networks / Satellite)
+    # ──────────────────────────────────────────────
+
+    def ntn_satellite_update(
+        self,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Update NTN satellite parameters.
+
+        Args:
+            **params: Satellite parameters (position, velocity, etc.).
+        """
+        msg: dict[str, Any] = {"message": "ntn_satellite_update"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # TRX (Transceiver)
+    # ──────────────────────────────────────────────
+
+    def trx(self, **params: Any) -> dict[str, Any]:
+        """Query or configure TRX (transceiver) parameters.
+
+        Args:
+            **params: TRX parameters.
+        """
+        msg: dict[str, Any] = {"message": "trx"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Logging (Additional)
+    # ──────────────────────────────────────────────
+
+    def log_bin_get(self, **params: Any) -> dict[str, Any]:
+        """Get binary log data.
+
+        Args:
+            **params: Log parameters (start_idx, count, etc.).
+        """
+        msg: dict[str, Any] = {"message": "log_bin_get"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def log_reset(self) -> dict[str, Any]:
+        """Reset log buffer."""
+        return self._client.send({"message": "log_reset"})
+
+    # ──────────────────────────────────────────────
+    # Utility Commands
+    # ──────────────────────────────────────────────
+
+    def cancel(self, message_id: int) -> dict[str, Any]:
+        """Cancel a pending asynchronous operation.
+
+        Args:
+            message_id: ID of the message to cancel.
+        """
+        return self._client.send({
+            "message": "cancel",
+            "message_id": message_id,
+        })
+
+    def echo(self, data: Any = None) -> dict[str, Any]:
+        """Echo test command.
+
+        Args:
+            data: Data to echo back.
+        """
+        msg: dict[str, Any] = {"message": "echo"}
+        if data is not None:
+            msg["data"] = data
+        return self._client.send(msg)
+
+    def license(self) -> dict[str, Any]:
+        """Get license information."""
+        return self._client.send({"message": "license"})
+
+    def monitor(self, **params: Any) -> dict[str, Any]:
+        """Enable/disable event monitoring.
+
+        Args:
+            **params: Monitor parameters (events to monitor).
+        """
+        msg: dict[str, Any] = {"message": "monitor"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def quit(self) -> dict[str, Any]:
+        """Terminate the eNB/gNB process."""
+        return self._client.send({"message": "quit"})

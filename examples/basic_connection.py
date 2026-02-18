@@ -49,12 +49,22 @@ def example_connect_all(host, password, ssl, ssl_verify):
         print("\nConnection status:")
         pprint(cb.status)
 
-        # Get version from each service
-        for name, api in [("eNB", cb.enb), ("MME", cb.mme),
-                          ("IMS", cb.ims), ("UE", cb.ue)]:
-            version = api.version()
-            print(f"\n{name} version:")
-            pprint(version)
+        # Get version from each connected service
+        for name, api, connected in [
+            ("eNB", cb.enb, cb.status.get("enb")),
+            ("MME", cb.mme, cb.status.get("mme")),
+            ("IMS", cb.ims, cb.status.get("ims")),
+            ("UE", cb.ue, cb.status.get("ue")),
+        ]:
+            if not connected:
+                print(f"\n{name}: Not connected")
+                continue
+            try:
+                version = api.version()
+                print(f"\n{name} version:")
+                pprint(version)
+            except Exception as e:
+                print(f"\n{name}: version() not supported ({e})")
     finally:
         cb.close()
         print("\nAll connections closed.")

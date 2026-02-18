@@ -247,7 +247,7 @@ class TestSetDefaultApn:
 
 class TestGetApnSessions:
     def test_returns_all_sessions(self, mock_client, mme):
-        mock_client.send.return_value = {
+        mock_client.send.side_effect = lambda msg: {
             "session_list": [
                 {"imsi": "001", "apn": "internet"},
                 {"imsi": "002", "apn": "ims"},
@@ -257,7 +257,7 @@ class TestGetApnSessions:
         assert len(sessions) == 2
 
     def test_filter_by_apn(self, mock_client, mme):
-        mock_client.send.return_value = {
+        mock_client.send.side_effect = lambda msg: {
             "session_list": [
                 {"imsi": "001", "apn": "internet"},
                 {"imsi": "002", "apn": "ims"},
@@ -269,12 +269,12 @@ class TestGetApnSessions:
         assert all(s["apn"] == "internet" for s in sessions)
 
     def test_empty_sessions(self, mock_client, mme):
-        mock_client.send.return_value = {}
+        mock_client.send.side_effect = lambda msg: {}
         sessions = mme.get_apn_sessions()
         assert sessions == []
 
     def test_uses_access_point_name_key(self, mock_client, mme):
-        mock_client.send.return_value = {
+        mock_client.send.side_effect = lambda msg: {
             "session_list": [
                 {"imsi": "001", "access_point_name": "internet"},
             ]
