@@ -6,6 +6,50 @@ Communicates with eNB/gNB, MME/AMF, IMS, and UE Simulator services over WebSocke
 
 ## Installation
 
+### REST API Service (One-Line Install)
+
+Deploy the HTTP REST API service directly on your Amarisoft Callbox:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/ekowtaylor/amarisoft/main/install.sh | sudo bash
+```
+
+This works on both **RPM-based** (RHEL, CentOS, Fedora) and **Debian-based** (Ubuntu, Debian) Linux distributions.
+
+**With custom options:**
+```bash
+# Custom port
+curl -sSL https://raw.githubusercontent.com/ekowtaylor/amarisoft/main/install.sh | sudo bash -s -- --port 8080
+
+# Uninstall
+curl -sSL https://raw.githubusercontent.com/ekowtaylor/amarisoft/main/install.sh | sudo bash -s -- --uninstall
+```
+
+**Available options:**
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--port PORT` | 9010 | Service port |
+| `--host HOST` | 0.0.0.0 | Bind address |
+| `--callbox-host HOST` | 127.0.0.1 | Callbox WebSocket host |
+| `--install-dir DIR` | /opt/amarisoft-rest-api | Installation directory |
+| `--branch BRANCH` | main | Git branch to install |
+| `--uninstall` | - | Remove service and files |
+
+**After installation:**
+```bash
+# Check status
+systemctl status amarisoft-rest-api
+
+# View logs
+journalctl -u amarisoft-rest-api -f
+
+# Test endpoints
+curl http://localhost:9010/health
+curl http://localhost:9010/docs  # Swagger UI
+```
+
+### Python Client Library
+
 ```bash
 pip install websocket-client
 ```
