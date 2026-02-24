@@ -13,7 +13,7 @@ import time
 
 import pytest
 
-from amarisoft import Callbox, SSHClient
+from client.websocket import Callbox, SSHClient
 
 
 pytestmark = pytest.mark.integration

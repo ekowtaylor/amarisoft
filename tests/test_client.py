@@ -7,8 +7,8 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-from amarisoft.client import WebSocketClient, _MAX_SKIP
-from amarisoft.exceptions import (
+from client.websocket.client import WebSocketClient, _MAX_SKIP
+from client.websocket.exceptions import (
     AmariConnectionError,
     AmariTimeoutError,
     AuthenticationError,

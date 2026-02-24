@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from amarisoft.logging import (
+from client.websocket.logging import (
     LogEntry,
     LogCollector,
     TestSession,

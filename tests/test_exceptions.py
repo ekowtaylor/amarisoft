@@ -1,6 +1,6 @@
 """Tests for the exception hierarchy."""
 
-from amarisoft.exceptions import (
+from client.websocket.exceptions import (
     AmariConnectionError,
     AmariError,
     AmariTimeoutError,

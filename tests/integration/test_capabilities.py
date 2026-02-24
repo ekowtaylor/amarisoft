@@ -14,15 +14,15 @@ from __future__ import annotations
 
 import pytest
 
-from amarisoft import Callbox
-from amarisoft.capabilities import (
+from client.websocket import Callbox
+from client.websocket.capabilities import (
     CapabilityChecker,
     DeviceCapabilities,
     RATType,
     ValidationContext,
     get_default_capabilities,
 )
-from amarisoft.exceptions import InvalidParameterError
+from client.websocket.exceptions import InvalidParameterError
 
 
 # ══════════════════════════════════════════════════════════════

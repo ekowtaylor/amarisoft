@@ -1,1 +1,5 @@
 websocket-client>=1.5.0
+
+# REST API Service dependencies
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0

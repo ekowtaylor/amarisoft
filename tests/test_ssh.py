@@ -7,7 +7,7 @@ import subprocess
 
 import pytest
 
-from amarisoft.ssh import (
+from client.websocket.ssh import (
     SSHClient,
     SDRCard,
     SystemInfo,

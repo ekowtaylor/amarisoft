@@ -47,11 +47,11 @@ def get_thrift_cert_paths() -> tuple[str, str]:
     """Get Thrift TLS certificate paths."""
     cert_path = os.environ.get('THRIFT_TLS_CL_CERT_PATH')
     key_path = os.environ.get('THRIFT_TLS_CL_KEY_PATH', cert_path)
-    
+
     if not cert_path:
         # Get current username
         username = os.environ.get('USER', os.environ.get('LOGNAME', 'root'))
-        
+
         # Try common default locations (in order of preference)
         default_paths = [
             # User-specific devserver certs
@@ -69,14 +69,14 @@ def get_thrift_cert_paths() -> tuple[str, str]:
                 key_path = path
                 print(f"    [Cert] Found certificate at: {path}")
                 break
-    
+
     if not cert_path or not os.path.exists(cert_path):
         raise RuntimeError(
             "Could not find Thrift TLS certificates. "
             "Set THRIFT_TLS_CL_CERT_PATH environment variable or ensure "
             "certificates exist at default locations."
         )
-    
+
     return cert_path, key_path
 
 

@@ -2,7 +2,7 @@
 
 import pytest
 
-from amarisoft import Callbox
+from client.websocket import Callbox
 
 
 def pytest_configure(config):

@@ -6,12 +6,12 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from amarisoft.callbox import Callbox
-from amarisoft.client import WebSocketClient
-from amarisoft.enb import ENBApi
-from amarisoft.mme import MMEApi
-from amarisoft.ims import IMSApi
-from amarisoft.ue import UEApi
+from client.websocket.callbox import Callbox
+from client.websocket.client import WebSocketClient
+from client.websocket.enb import ENBApi
+from client.websocket.mme import MMEApi
+from client.websocket.ims import IMSApi
+from client.websocket.ue import UEApi
 
 
 class TestConstructor:
