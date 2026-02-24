@@ -237,9 +237,11 @@ fi
 log_step "Installing Python 3..."
 case $PKG_MANAGER in
     dnf|yum)
-        $PKG_INSTALL python3 python3-pip python3-venv git curl
+        # On Fedora/RHEL, venv is included in python3 package
+        $PKG_INSTALL python3 python3-pip git curl
         ;;
     apt)
+        # On Debian/Ubuntu, venv is a separate package
         $PKG_INSTALL python3 python3-pip python3-venv git curl
         ;;
 esac
