@@ -10,7 +10,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, Query
 
-from amarisoft.exceptions import AmariError
+from client.websocket.exceptions import AmariError
 
 from ..exceptions import map_amarisoft_exception
 from ..manager import CallboxManager, get_manager
