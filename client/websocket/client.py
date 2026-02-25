@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import logging
+import socket as _socket
 import ssl as _ssl
 import threading
 import time
@@ -98,6 +99,36 @@ class WebSocketClient:
         ws = self._ws
         return ws is not None and ws.connected
 
+    def is_listening(self, timeout: float = 2.0) -> bool:
+        """Check if the WebSocket service is listening.
+
+        Performs a lightweight TCP socket connection check to determine if
+        the service is listening on the configured host and port. This does
+        not establish a WebSocket handshake, making it fast and non-intrusive.
+
+        Args:
+            timeout: Connection timeout in seconds (default: 2.0).
+
+        Returns:
+            True if the service is listening (accepting connections),
+            False otherwise.
+
+        Example::
+
+            client = WebSocketClient(host="192.168.1.80", port=9001)
+
+            if client.is_listening():
+                print("WebSocket service is listening")
+                client.connect()
+            else:
+                print("WebSocket service is not available")
+        """
+        try:
+            with _socket.create_connection((self.host, self.port), timeout=timeout):
+                return True
+        except OSError:
+            return False
+
     def connect(self) -> dict[str, Any]:
         """Establish a WebSocket connection and wait for the ready message.
 
@@ -119,13 +150,9 @@ class WebSocketClient:
             self._ws.settimeout(self.timeout)
             self._ws.connect(self.uri, origin="Python-AmariClient")
         except websocket.WebSocketException as e:
-            raise AmariConnectionError(
-                f"Failed to connect to {self.uri}: {e}"
-            ) from e
+            raise AmariConnectionError(f"Failed to connect to {self.uri}: {e}") from e
         except OSError as e:
-            raise AmariConnectionError(
-                f"Failed to connect to {self.uri}: {e}"
-            ) from e
+            raise AmariConnectionError(f"Failed to connect to {self.uri}: {e}") from e
 
         # Wait for ready message
         ready_msg = self._recv()
@@ -137,10 +164,14 @@ class WebSocketClient:
 
         # Authenticate if password is set
         if self.password:
-            self._ws.send(json.dumps({
-                "message": "authenticate",
-                "password": self.password,
-            }))
+            self._ws.send(
+                json.dumps(
+                    {
+                        "message": "authenticate",
+                        "password": self.password,
+                    }
+                )
+            )
             auth_resp = self._recv()
             if "error" in auth_resp:
                 self.close()
@@ -319,9 +350,7 @@ class WebSocketClient:
                         error_code=resp.get("error_code"),
                     )
                 return resp
-            logger.debug(
-                "Skipped unsolicited message: %s", resp.get("message")
-            )
+            logger.debug("Skipped unsolicited message: %s", resp.get("message"))
         raise AmariConnectionError(
             f"No matching response for message_id={msg_id} after "
             f"{_MAX_SKIP} messages"
@@ -332,9 +361,7 @@ class WebSocketClient:
         try:
             raw = self._ws.recv()
         except websocket.WebSocketTimeoutException as e:
-            raise AmariTimeoutError(
-                f"Timed out waiting for response: {e}"
-            ) from e
+            raise AmariTimeoutError(f"Timed out waiting for response: {e}") from e
         except websocket.WebSocketException as e:
             self._ready = False
             raise AmariConnectionError(f"Receive failed: {e}") from e
@@ -347,9 +374,7 @@ class WebSocketClient:
         try:
             data = json.loads(raw)
         except json.JSONDecodeError as e:
-            raise AmariConnectionError(
-                f"Invalid JSON from server: {e}"
-            ) from e
+            raise AmariConnectionError(f"Invalid JSON from server: {e}") from e
 
         # The server may respond with a JSON array in batch mode.
         if isinstance(data, list):
@@ -366,7 +391,9 @@ class WebSocketClient:
         self.connect()
         return self
 
-    def __exit__(self, exc_type: type | None, exc_val: BaseException | None, exc_tb: Any) -> None:
+    def __exit__(
+        self, exc_type: type | None, exc_val: BaseException | None, exc_tb: Any
+    ) -> None:
         self.close()
 
     def __del__(self) -> None:

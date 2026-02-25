@@ -5,16 +5,15 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
-from amarisoft.exceptions import AmariConnectionError
+from client.websocket.exceptions import AmariConnectionError
 from service.config import Settings
 from service.manager import (
     CallboxManager,
     CallboxStatus,
-    ServiceStatus,
-    get_manager,
-    set_manager,
     clear_manager,
+    get_manager,
+    ServiceStatus,
+    set_manager,
 )
 
 
@@ -185,6 +184,7 @@ class TestCallboxManager:
         manager = CallboxManager(settings)
 
         from service.exceptions import ServiceUnavailableError
+
         with pytest.raises(ServiceUnavailableError):
             _ = manager.enb
 

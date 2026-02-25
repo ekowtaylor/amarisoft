@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 import threading
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import Any, TYPE_CHECKING
 
 from client.websocket.client import WebSocketClient
 from client.websocket.enb import ENBApi

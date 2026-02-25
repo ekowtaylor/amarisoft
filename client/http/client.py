@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import socket
 from typing import Any
-from urllib.parse import urljoin
+from urllib.parse import urlparse
 
 import requests
 from requests.adapters import HTTPAdapter
@@ -64,10 +65,12 @@ class HTTPClient:
         self._session.mount("https://", adapter)
 
         # Set default headers
-        self._session.headers.update({
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-        })
+        self._session.headers.update(
+            {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            }
+        )
 
         if api_key:
             self._session.headers["X-API-Key"] = api_key
@@ -86,9 +89,7 @@ class HTTPClient:
             data = {"raw": response.text}
 
         if response.status_code == 401:
-            raise AuthenticationError(
-                data.get("error", "Authentication failed")
-            )
+            raise AuthenticationError(data.get("error", "Authentication failed"))
 
         if response.status_code >= 400:
             raise APIError(
@@ -100,7 +101,9 @@ class HTTPClient:
 
         return data
 
-    def get(self, endpoint: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def get(
+        self, endpoint: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Make a GET request.
 
         Args:
@@ -207,6 +210,40 @@ class HTTPClient:
             Health status response.
         """
         return self.get("/health")
+
+    def is_listening(self, timeout: float = 2.0) -> bool:
+        """Check if the HTTP service is listening.
+
+        Performs a lightweight TCP socket connection check to determine if
+        the service is listening on the configured host and port. This does
+        not make an HTTP request, making it fast and non-intrusive.
+
+        Args:
+            timeout: Connection timeout in seconds (default: 2.0).
+
+        Returns:
+            True if the service is listening (accepting connections),
+            False otherwise.
+
+        Example::
+
+            client = HTTPClient("http://192.168.1.80:9010")
+
+            if client.is_listening():
+                print("HTTP service is listening")
+                response = client.health_check()
+            else:
+                print("HTTP service is not available")
+        """
+        parsed = urlparse(self.base_url)
+        host = parsed.hostname or "127.0.0.1"
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+
+        try:
+            with socket.create_connection((host, port), timeout=timeout):
+                return True
+        except OSError:
+            return False
 
     def close(self):
         """Close the HTTP session."""

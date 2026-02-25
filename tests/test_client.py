@@ -6,8 +6,7 @@ import json
 from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
-
-from client.websocket.client import WebSocketClient, _MAX_SKIP
+from client.websocket.client import _MAX_SKIP, WebSocketClient
 from client.websocket.exceptions import (
     AmariConnectionError,
     AmariTimeoutError,
@@ -185,11 +184,13 @@ class TestSend:
     @patch("amarisoft.client.websocket.WebSocket")
     def test_send_raises_command_error_on_error_response(self, MockWS):
         ready = json.dumps({"message": "ready"})
-        err = json.dumps({
-            "message_id": 1,
-            "error": "unknown command",
-            "error_code": 404,
-        })
+        err = json.dumps(
+            {
+                "message_id": 1,
+                "error": "unknown command",
+                "error_code": 404,
+            }
+        )
         ws = _make_ws_mock([ready, err])
         MockWS.return_value = ws
 
@@ -251,10 +252,12 @@ class TestSendBatch:
 
         client = WebSocketClient()
         client.connect()
-        results = client.send_batch([
-            {"message": "stats"},
-            {"message": "version"},
-        ])
+        results = client.send_batch(
+            [
+                {"message": "stats"},
+                {"message": "version"},
+            ]
+        )
 
         assert len(results) == 2
         assert results[0]["data"] == "a"
@@ -367,3 +370,78 @@ class TestRepr:
         client = WebSocketClient("10.0.0.1", 9001)
         client.connect()
         assert repr(client) == "WebSocketClient(ws://10.0.0.1:9001, connected)"
+
+
+# ── is_listening() ──────────────────────────────────────────────────
+
+
+class TestIsListening:
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_returns_true_when_service_available(self, mock_conn):
+        """Test is_listening returns True when service accepts connections."""
+        mock_conn.return_value.__enter__ = MagicMock()
+        mock_conn.return_value.__exit__ = MagicMock()
+
+        client = WebSocketClient("192.168.1.80", 9001)
+        result = client.is_listening()
+
+        assert result is True
+        mock_conn.assert_called_once_with(("192.168.1.80", 9001), timeout=2.0)
+
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_returns_false_on_connection_refused(self, mock_conn):
+        """Test is_listening returns False when connection is refused."""
+        mock_conn.side_effect = OSError("Connection refused")
+
+        client = WebSocketClient("192.168.1.80", 9001)
+        result = client.is_listening()
+
+        assert result is False
+
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_returns_false_on_timeout(self, mock_conn):
+        """Test is_listening returns False on timeout."""
+        import socket
+
+        mock_conn.side_effect = socket.timeout("Connection timed out")
+
+        client = WebSocketClient("192.168.1.80", 9001)
+        result = client.is_listening()
+
+        assert result is False
+
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_with_custom_timeout(self, mock_conn):
+        """Test is_listening uses custom timeout."""
+        mock_conn.return_value.__enter__ = MagicMock()
+        mock_conn.return_value.__exit__ = MagicMock()
+
+        client = WebSocketClient("192.168.1.80", 9001)
+        client.is_listening(timeout=5.0)
+
+        mock_conn.assert_called_once_with(("192.168.1.80", 9001), timeout=5.0)
+
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_uses_client_host_and_port(self, mock_conn):
+        """Test is_listening uses the client's configured host and port."""
+        mock_conn.return_value.__enter__ = MagicMock()
+        mock_conn.return_value.__exit__ = MagicMock()
+
+        client = WebSocketClient("10.0.0.1", 9003)
+        client.is_listening()
+
+        mock_conn.assert_called_once_with(("10.0.0.1", 9003), timeout=2.0)
+
+    @patch("client.websocket.client._socket.create_connection")
+    def test_is_listening_does_not_require_connection(self, mock_conn):
+        """Test is_listening works without establishing WebSocket connection."""
+        mock_conn.return_value.__enter__ = MagicMock()
+        mock_conn.return_value.__exit__ = MagicMock()
+
+        client = WebSocketClient("192.168.1.80", 9001)
+        assert client.connected is False
+
+        result = client.is_listening()
+
+        assert result is True
+        assert client.connected is False
