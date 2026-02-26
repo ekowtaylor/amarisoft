@@ -864,7 +864,9 @@ async def nr_pscell_change(
 ) -> dict[str, Any]:
     """Change NR PSCell."""
     try:
-        return manager.enb.nr_pscell_change(enb_ue_id=enb_ue_id, target_cell_id=target_cell_id)
+        return manager.enb.nr_pscell_change(
+            enb_ue_id=enb_ue_id, target_cell_id=target_cell_id
+        )
     except AmariError as e:
         raise map_amarisoft_exception(e, "eNB") from e
 
@@ -883,7 +885,9 @@ async def scells_act_deact(
     """Activate/deactivate SCells."""
     try:
         ids = [int(x.strip()) for x in scell_ids.split(",")]
-        return manager.enb.scells_act_deact(enb_ue_id=enb_ue_id, scell_ids=ids, activate=activate)
+        return manager.enb.scells_act_deact(
+            enb_ue_id=enb_ue_id, scell_ids=ids, activate=activate
+        )
     except AmariError as e:
         raise map_amarisoft_exception(e, "eNB") from e
 
@@ -901,7 +905,9 @@ async def dci_bwp_switch(
 ) -> dict[str, Any]:
     """Switch BWP via DCI."""
     try:
-        return manager.enb.dci_bwp_switch(enb_ue_id=enb_ue_id, dl_bwp_id=dl_bwp_id, ul_bwp_id=ul_bwp_id)
+        return manager.enb.dci_bwp_switch(
+            enb_ue_id=enb_ue_id, dl_bwp_id=dl_bwp_id, ul_bwp_id=ul_bwp_id
+        )
     except AmariError as e:
         raise map_amarisoft_exception(e, "eNB") from e
 

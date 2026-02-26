@@ -1988,11 +1988,13 @@ class MMEApi(ServiceApi):
         # Calculate UE count per APN and build final list
         apn_list = []
         for apn, stats in apn_stats.items():
-            apn_list.append({
-                "apn": stats["apn"],
-                "ue_count": len(stats["imsis"]),
-                "bearer_count": stats["bearer_count"],
-            })
+            apn_list.append(
+                {
+                    "apn": stats["apn"],
+                    "ue_count": len(stats["imsis"]),
+                    "bearer_count": stats["bearer_count"],
+                }
+            )
 
         return {
             "apn_list": sorted(apn_list, key=lambda x: x["apn"]),

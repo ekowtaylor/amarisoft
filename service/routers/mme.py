@@ -544,13 +544,18 @@ async def configure_monitor(
     description="Get binary log data.",
 )
 async def get_binary_logs(
-    min_index: int | None = Query(None, alias="min", description="Minimum log index"),
-    max_index: int | None = Query(None, alias="max", description="Maximum log index"),
+    start_time: float | None = Query(None, description="Start timestamp"),
+    end_time: float | None = Query(None, description="End timestamp"),
+    max_count: int | None = Query(None, description="Maximum number of entries"),
     manager: CallboxManager = Depends(get_manager),
 ) -> dict[str, Any]:
     """Get binary log data."""
     try:
-        return manager.mme.log_bin_get(min_index, max_index)
+        return manager.mme.log_bin_get(
+            start_time=start_time,
+            end_time=end_time,
+            max_count=max_count,
+        )
     except AmariError as e:
         raise map_amarisoft_exception(e, "MME") from e
 
