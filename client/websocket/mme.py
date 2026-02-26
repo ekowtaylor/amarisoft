@@ -17,18 +17,17 @@ class MMEApi(ServiceApi):
     ``config_get``, ``config_set``, ``stats``, ``ue_get``,
     ``log_get``, ``log_set``.
 
-    Remote API Commands Summary:
-        - Network Queries: enb_get, gnb_get, session_get, bearer_get
-        - UE Management: ue_add, ue_del, ue_set, ue_detach, ue_identity_request
+    Supported Remote API Commands (Amarisoft 2023-12-15):
+        - Network Queries: enb, gnb, ng_ran
+        - UE Management: ue_add, ue_del, ue_detach, ue_identity_request
         - Bearer/Session: ue_activate_dedicated_bearer, ue_deactivate_bearer,
-            ue_modify_bearer, ue_modify_pdu_session, ue_modify_reflective_qos
+            ue_modify_bearer, ue_modify_pdu_session
         - 5G NAS: 5gs_nas_transport, generic_nas_transport, guti_realloc
-        - Paging: mt_cs_paging, mt_data_paging, mme_paging_status
-        - Policy/Filters: attach_reject_filter, registration_reject_filter, pdn_list
-        - Location Services: lcs, location_req, lpp_request_location, etc.
+        - Paging: mt_cs_paging
+        - Location Services: lcs, location_req, lpp_request_location
         - Interface Control: S6, S13, SGS, N-interfaces (5GC)
-        - PWS/CBC: cbc_notif_subscribe, pws_kill, pws_write, sbc
-        - Utility: cancel, echo, license, monitor, quit
+        - PWS/CBC: cbc_notif_subscribe/unsubscribe, pws_kill, pws_write, sbc
+        - Utility: cancel, echo, monitor, quit
     """
 
     DEFAULT_PORT = 9000
@@ -37,49 +36,17 @@ class MMEApi(ServiceApi):
     # Network Element Queries
     # ──────────────────────────────────────────────
 
-    def enb_get(self, **filters: Any) -> dict[str, Any]:
-        """Query connected eNodeBs (LTE base stations).
+    def enb_status(self) -> dict[str, Any]:
+        """Query connected eNodeBs (LTE base stations)."""
+        return self._client.send({"message": "enb"})
 
-        Args:
-            **filters: Optional filters.
-        """
-        msg: dict[str, Any] = {"message": "enb_get"}
-        msg.update(filters)
-        return self._client.send(msg)
+    def gnb_status(self) -> dict[str, Any]:
+        """Query connected gNodeBs (NR base stations)."""
+        return self._client.send({"message": "gnb"})
 
-    def gnb_get(self, **filters: Any) -> dict[str, Any]:
-        """Query connected gNodeBs (NR base stations).
-
-        Args:
-            **filters: Optional filters.
-        """
-        msg: dict[str, Any] = {"message": "gnb_get"}
-        msg.update(filters)
-        return self._client.send(msg)
-
-    # ──────────────────────────────────────────────
-    # Session / Bearer Queries
-    # ──────────────────────────────────────────────
-
-    def session_get(self, **filters: Any) -> dict[str, Any]:
-        """Query PDN/PDU session details.
-
-        Args:
-            **filters: Optional filters (e.g., imsi).
-        """
-        msg: dict[str, Any] = {"message": "session_get"}
-        msg.update(filters)
-        return self._client.send(msg)
-
-    def bearer_get(self, **filters: Any) -> dict[str, Any]:
-        """Query EPS bearer or QoS flow information.
-
-        Args:
-            **filters: Optional filters (e.g., imsi, erab_id).
-        """
-        msg: dict[str, Any] = {"message": "bearer_get"}
-        msg.update(filters)
-        return self._client.send(msg)
+    def ng_ran_status(self) -> dict[str, Any]:
+        """Query NG-RAN status."""
+        return self._client.send({"message": "ng_ran"})
 
     # ──────────────────────────────────────────────
     # UE Management
@@ -162,12 +129,14 @@ class MMEApi(ServiceApi):
         if pre_emption_vulnerability is not None:
             qos["pre_emption_vulnerability"] = pre_emption_vulnerability
 
-        return self._client.send({
-            "message": "ue_modify_bearer",
-            "imsi": imsi,
-            "erab_id": erab_id,
-            "qos": qos,
-        })
+        return self._client.send(
+            {
+                "message": "ue_modify_bearer",
+                "imsi": imsi,
+                "erab_id": erab_id,
+                "qos": qos,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Paging
@@ -179,10 +148,12 @@ class MMEApi(ServiceApi):
         Args:
             imsi: IMSI of the target UE.
         """
-        return self._client.send({
-            "message": "mt_cs_paging",
-            "imsi": imsi,
-        })
+        return self._client.send(
+            {
+                "message": "mt_cs_paging",
+                "imsi": imsi,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Policy / Filters
@@ -199,18 +170,22 @@ class MMEApi(ServiceApi):
             imsi: IMSI to filter.
             emm_cause: EMM cause code for rejection.
         """
-        return self._client.send({
-            "message": "attach_reject_filter",
-            "imsi": imsi,
-            "emm_cause": emm_cause,
-        })
+        return self._client.send(
+            {
+                "message": "attach_reject_filter",
+                "imsi": imsi,
+                "emm_cause": emm_cause,
+            }
+        )
 
     def attach_reject_filter_clear(self) -> dict[str, Any]:
         """Clear all attach reject filters."""
-        return self._client.send({
-            "message": "attach_reject_filter",
-            "clear": True,
-        })
+        return self._client.send(
+            {
+                "message": "attach_reject_filter",
+                "clear": True,
+            }
+        )
 
     def registration_reject_filter(
         self,
@@ -226,12 +201,14 @@ class MMEApi(ServiceApi):
             imsi: IMSI to filter.
             cause: 5GMM cause code for rejection.
         """
-        return self._client.send({
-            "message": "registration_mobility_periodic",
-            "imsi": imsi,
-            "reject": True,
-            "cause": cause,
-        })
+        return self._client.send(
+            {
+                "message": "registration_mobility_periodic",
+                "imsi": imsi,
+                "reject": True,
+                "cause": cause,
+            }
+        )
 
     def set_t3512(self, value: int) -> dict[str, Any]:
         """Set the T3512 periodic tracking area update timer.
@@ -239,10 +216,12 @@ class MMEApi(ServiceApi):
         Args:
             value: Timer value in seconds.
         """
-        return self._client.send({
-            "message": "t3512",
-            "value": value,
-        })
+        return self._client.send(
+            {
+                "message": "t3512",
+                "value": value,
+            }
+        )
 
     def pdn_list(self, apn: str, **params: Any) -> dict[str, Any]:
         """Configure PDN settings.
@@ -345,34 +324,6 @@ class MMEApi(ServiceApi):
         msg["priority_level"] = priority_level
 
         return self._client.send(msg)
-
-    def get_apn_sessions(self, apn: str | None = None) -> list[dict[str, Any]]:
-        """Get active PDN sessions, optionally filtered by APN.
-
-        Args:
-            apn: Filter by APN name. If None, returns all sessions.
-
-        Returns:
-            List of active PDN sessions.
-
-        Example::
-
-            # Get all sessions
-            sessions = mme.get_apn_sessions()
-
-            # Get only IMS sessions
-            ims_sessions = mme.get_apn_sessions(apn="ims")
-        """
-        result = self.session_get()
-        sessions = result.get("session_list", result.get("pdn_list", []))
-
-        if apn is not None:
-            sessions = [
-                s for s in sessions
-                if s.get("apn") == apn or s.get("access_point_name") == apn
-            ]
-
-        return sessions
 
     # ──────────────────────────────────────────────
     # UE Management (Extended)
@@ -563,12 +514,14 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the AMF.
         """
-        return self._client.send({
-            "message": "ue_modify_reflective_qos",
-            "imsi": imsi,
-            "pdu_session_id": pdu_session_id,
-            "reflective_qos": enabled,
-        })
+        return self._client.send(
+            {
+                "message": "ue_modify_reflective_qos",
+                "imsi": imsi,
+                "pdu_session_id": pdu_session_id,
+                "reflective_qos": enabled,
+            }
+        )
 
     def ue_nssaa(
         self,
@@ -612,11 +565,13 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the AMF.
         """
-        return self._client.send({
-            "message": "ue_s_nssai_update",
-            "imsi": imsi,
-            "allowed_nssai": allowed_nssai,
-        })
+        return self._client.send(
+            {
+                "message": "ue_s_nssai_update",
+                "imsi": imsi,
+                "allowed_nssai": allowed_nssai,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # 5G NAS Transport
@@ -638,12 +593,14 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the AMF.
         """
-        return self._client.send({
-            "message": "5gs_nas_transport",
-            "imsi": imsi,
-            "payload": payload,
-            "payload_type": payload_type,
-        })
+        return self._client.send(
+            {
+                "message": "5gs_nas_transport",
+                "imsi": imsi,
+                "payload": payload,
+                "payload_type": payload_type,
+            }
+        )
 
     def generic_nas_transport(
         self,
@@ -661,12 +618,14 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME/AMF.
         """
-        return self._client.send({
-            "message": "generic_nas_transport",
-            "imsi": imsi,
-            "container_type": container_type,
-            "container": container,
-        })
+        return self._client.send(
+            {
+                "message": "generic_nas_transport",
+                "imsi": imsi,
+                "container_type": container_type,
+                "container": container,
+            }
+        )
 
     def guti_realloc(
         self,
@@ -745,10 +704,12 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME.
         """
-        return self._client.send({
-            "message": "t3346",
-            "value": value,
-        })
+        return self._client.send(
+            {
+                "message": "t3346",
+                "value": value,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Location Services
@@ -840,11 +801,13 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME/AMF.
         """
-        return self._client.send({
-            "message": "lpp_provide_ad",
-            "imsi": imsi,
-            "assistance_data": assistance_data,
-        })
+        return self._client.send(
+            {
+                "message": "lpp_provide_ad",
+                "imsi": imsi,
+                "assistance_data": assistance_data,
+            }
+        )
 
     def lpp_request_ad(
         self,
@@ -879,10 +842,12 @@ class MMEApi(ServiceApi):
         Returns:
             UE positioning capabilities.
         """
-        return self._client.send({
-            "message": "lpp_request_capabilities",
-            "imsi": imsi,
-        })
+        return self._client.send(
+            {
+                "message": "lpp_request_capabilities",
+                "imsi": imsi,
+            }
+        )
 
     def lpp_abort(
         self,
@@ -1371,10 +1336,12 @@ class MMEApi(ServiceApi):
         Returns:
             Subscription result.
         """
-        return self._client.send({
-            "message": "cbc_notif_subscribe",
-            "callback_url": callback_url,
-        })
+        return self._client.send(
+            {
+                "message": "cbc_notif_subscribe",
+                "callback_url": callback_url,
+            }
+        )
 
     def cbc_notif_unsubscribe(
         self,
@@ -1643,11 +1610,13 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME.
         """
-        return self._client.send({
-            "message": "tau_reject_filter",
-            "imsi": imsi,
-            "emm_cause": emm_cause,
-        })
+        return self._client.send(
+            {
+                "message": "tau_reject_filter",
+                "imsi": imsi,
+                "emm_cause": emm_cause,
+            }
+        )
 
     def tau_reject_filter_clear(self) -> dict[str, Any]:
         """Clear all TAU reject filters.
@@ -1655,10 +1624,12 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME.
         """
-        return self._client.send({
-            "message": "tau_reject_filter",
-            "clear": True,
-        })
+        return self._client.send(
+            {
+                "message": "tau_reject_filter",
+                "clear": True,
+            }
+        )
 
     def service_reject_filter(
         self,
@@ -1674,11 +1645,13 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME.
         """
-        return self._client.send({
-            "message": "service_reject_filter",
-            "imsi": imsi,
-            "emm_cause": emm_cause,
-        })
+        return self._client.send(
+            {
+                "message": "service_reject_filter",
+                "imsi": imsi,
+                "emm_cause": emm_cause,
+            }
+        )
 
     def service_reject_filter_clear(self) -> dict[str, Any]:
         """Clear all service request reject filters.
@@ -1686,10 +1659,12 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME.
         """
-        return self._client.send({
-            "message": "service_reject_filter",
-            "clear": True,
-        })
+        return self._client.send(
+            {
+                "message": "service_reject_filter",
+                "clear": True,
+            }
+        )
 
     def registration_mobility_periodic(
         self,
@@ -1795,12 +1770,14 @@ class MMEApi(ServiceApi):
         Returns:
             Response from the MME/AMF.
         """
-        return self._client.send({
-            "message": "ue_ambr_update",
-            "imsi": imsi,
-            "dl_ambr": dl_ambr,
-            "ul_ambr": ul_ambr,
-        })
+        return self._client.send(
+            {
+                "message": "ue_ambr_update",
+                "imsi": imsi,
+                "dl_ambr": dl_ambr,
+                "ul_ambr": ul_ambr,
+            }
+        )
 
     def session_ambr_update(
         self,
@@ -1849,10 +1826,12 @@ class MMEApi(ServiceApi):
         Returns:
             Cancel result.
         """
-        return self._client.send({
-            "message": "cancel",
-            "request_id": request_id,
-        })
+        return self._client.send(
+            {
+                "message": "cancel",
+                "request_id": request_id,
+            }
+        )
 
     def echo(self, data: Any = None) -> dict[str, Any]:
         """Echo test - returns the sent data.
@@ -1950,3 +1929,536 @@ class MMEApi(ServiceApi):
             Reset confirmation.
         """
         return self._client.send({"message": "log_reset"})
+
+    # ──────────────────────────────────────────────
+    # APN Management
+    # ──────────────────────────────────────────────
+
+    def apn_get(self) -> dict[str, Any]:
+        """Get list of APNs currently in use by connected UEs.
+
+        Since Amarisoft doesn't have a dedicated APN list message,
+        this method extracts APN information from the bearers of
+        all registered UEs.
+
+        Returns:
+            Dictionary containing:
+                - apn_list: List of unique APNs with usage details
+                - total_apns: Count of unique APNs
+                - ue_count: Number of UEs with active bearers
+
+        Example::
+
+            >>> mme.apn_get()
+            {
+                "apn_list": [
+                    {"apn": "internet", "ue_count": 5, "bearer_count": 5},
+                    {"apn": "ims", "ue_count": 3, "bearer_count": 3}
+                ],
+                "total_apns": 2,
+                "ue_count": 5
+            }
+        """
+        # Get all UEs from MME
+        ue_data = self._client.send({"message": "ue_get"})
+        ue_list = ue_data.get("ue_list", [])
+
+        # Extract APN statistics from bearers
+        apn_stats: dict[str, dict[str, Any]] = {}
+        ues_with_bearers = set()
+
+        for ue in ue_list:
+            imsi = ue.get("imsi", "unknown")
+            bearers = ue.get("bearers", [])
+
+            for bearer in bearers:
+                apn = bearer.get("apn")
+                if apn:
+                    ues_with_bearers.add(imsi)
+                    if apn not in apn_stats:
+                        apn_stats[apn] = {
+                            "apn": apn,
+                            "ue_count": 0,
+                            "bearer_count": 0,
+                            "imsis": set(),
+                        }
+                    apn_stats[apn]["bearer_count"] += 1
+                    apn_stats[apn]["imsis"].add(imsi)
+
+        # Calculate UE count per APN and build final list
+        apn_list = []
+        for apn, stats in apn_stats.items():
+            apn_list.append({
+                "apn": stats["apn"],
+                "ue_count": len(stats["imsis"]),
+                "bearer_count": stats["bearer_count"],
+            })
+
+        return {
+            "apn_list": sorted(apn_list, key=lambda x: x["apn"]),
+            "total_apns": len(apn_list),
+            "ue_count": len(ues_with_bearers),
+        }
+
+    # ──────────────────────────────────────────────
+    # Command Execution
+    # ──────────────────────────────────────────────
+
+    def cmd(self, command: str, **params: Any) -> dict[str, Any]:
+        """Execute a shell command on the MME/AMF.
+
+        Args:
+            command: Command string to execute.
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {"message": "cmd", "command": command}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def register(self, **params: Any) -> dict[str, Any]:
+        """Register for event notifications.
+
+        Args:
+            **params: Registration parameters.
+        """
+        msg: dict[str, Any] = {"message": "register"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # S1 Interface
+    # ──────────────────────────────────────────────
+
+    def s1_mme_config_upd(self) -> dict[str, Any]:
+        """Send MME Configuration Update."""
+        return self._client.send({"message": "s1_mme_config_upd"})
+
+    def s1_reset(self, **params: Any) -> dict[str, Any]:
+        """Reset S1 interface.
+
+        Args:
+            **params: Reset parameters.
+        """
+        msg: dict[str, Any] = {"message": "s1_reset"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # N5 Interface (5GC PCF)
+    # ──────────────────────────────────────────────
+
+    def n5_connect(self, **params: Any) -> dict[str, Any]:
+        """Connect to PCF via N5 interface.
+
+        Args:
+            **params: Connection parameters.
+        """
+        msg: dict[str, Any] = {"message": "n5peerconnect"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def n5_events_subscribe(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Subscribe to N5 events.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Subscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "n5_events_subscribe"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def n5_events_unsubscribe(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Unsubscribe from N5 events.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Unsubscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "n5_events_unsubscribe"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def n5_session_create(
+        self,
+        imsi: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Create N5 session.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Session parameters.
+        """
+        msg: dict[str, Any] = {"message": "n5_session_create", "imsi": imsi}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def n5_session_terminate(
+        self,
+        imsi: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Terminate N5 session.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Termination parameters.
+        """
+        msg: dict[str, Any] = {"message": "n5_session_terminate", "imsi": imsi}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # N8 Interface (5GC UDM) - Additional
+    # ──────────────────────────────────────────────
+
+    def n8_peer_connect(self, **params: Any) -> dict[str, Any]:
+        """Connect to UDM via N8 interface (peer mode).
+
+        Args:
+            **params: Connection parameters.
+        """
+        msg: dict[str, Any] = {"message": "n8peerconnect"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def n8_dereg_notify(
+        self,
+        imsi: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Send N8 deregistration notification.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Notification parameters.
+        """
+        msg: dict[str, Any] = {"message": "n8_dereg_notify", "imsi": imsi}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # LCS Interface (Location Services)
+    # ──────────────────────────────────────────────
+
+    def lcs_connect(self) -> dict[str, Any]:
+        """Connect to LCS (Location Services)."""
+        return self._client.send({"message": "lcsconnect"})
+
+    def lcs_disconnect(self) -> dict[str, Any]:
+        """Disconnect from LCS."""
+        return self._client.send({"message": "lcsdisconnect"})
+
+    def lcsap_reset_req(self, **params: Any) -> dict[str, Any]:
+        """Send LCS-AP Reset Request.
+
+        Args:
+            **params: Reset parameters.
+        """
+        msg: dict[str, Any] = {"message": "lcsap_reset_req"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # LMF Interface (5G Location)
+    # ──────────────────────────────────────────────
+
+    def lmf_client_connect(self, **params: Any) -> dict[str, Any]:
+        """Connect to LMF (Location Management Function).
+
+        Args:
+            **params: Connection parameters.
+        """
+        msg: dict[str, Any] = {"message": "lmf_client_connect"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def lmf_non_ue_n2_subscribe(self, **params: Any) -> dict[str, Any]:
+        """Subscribe to non-UE N2 messages from LMF.
+
+        Args:
+            **params: Subscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "lmf_non_ue_n2_subscribe"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def lmf_non_ue_n2_unsubscribe(self, **params: Any) -> dict[str, Any]:
+        """Unsubscribe from non-UE N2 messages from LMF.
+
+        Args:
+            **params: Unsubscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "lmf_non_ue_n2_unsubscribe"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def lmf_ue_n1_n2_subscribe(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Subscribe to UE N1/N2 messages from LMF.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Subscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "lmf_ue_n1_n2_subscribe"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def lmf_ue_n1_n2_unsubscribe(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Unsubscribe from UE N1/N2 messages from LMF.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Unsubscription parameters.
+        """
+        msg: dict[str, Any] = {"message": "lmf_ue_n1_n2_unsubscribe"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # NR Location Services
+    # ──────────────────────────────────────────────
+
+    def nr_location_req(
+        self,
+        imsi: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Request NR location for a UE.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Location request parameters.
+        """
+        msg: dict[str, Any] = {"message": "nr_location_req", "imsi": imsi}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def nr_cancel_location(
+        self,
+        imsi: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Cancel NR location request.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Cancellation parameters.
+        """
+        msg: dict[str, Any] = {"message": "nr_cancel_location", "imsi": imsi}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def nr_otdoa_information_req(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Request NR OTDOA (Observed Time Difference of Arrival) information.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Request parameters.
+        """
+        msg: dict[str, Any] = {"message": "nr_otdoa_information_req"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def otdoa_information_req(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Request OTDOA (Observed Time Difference of Arrival) information.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Request parameters.
+        """
+        msg: dict[str, Any] = {"message": "otdoa_information_req"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def trp_information_req(self, **params: Any) -> dict[str, Any]:
+        """Request TRP (Transmission Reception Point) information.
+
+        Args:
+            **params: Request parameters.
+        """
+        msg: dict[str, Any] = {"message": "trp_information_req"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def reset_ue_pos_stored_info(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Reset stored UE positioning information.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Reset parameters.
+        """
+        msg: dict[str, Any] = {"message": "reset_ue_pos_stored_info"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def ecid_periodic_meas_termination(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Terminate E-CID periodic measurements.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: Termination parameters.
+        """
+        msg: dict[str, Any] = {"message": "ecid_periodic_meas_termination"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Mobile Equipment Management
+    # ──────────────────────────────────────────────
+
+    def me_add(
+        self,
+        imei: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Add Mobile Equipment entry.
+
+        Args:
+            imei: IMEI of the mobile equipment.
+            **params: Additional ME parameters.
+        """
+        msg: dict[str, Any] = {"message": "me_add", "imei": imei}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def me_del(
+        self,
+        imei: str,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Delete Mobile Equipment entry.
+
+        Args:
+            imei: IMEI of the mobile equipment.
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {"message": "me_del", "imei": imei}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Data Transport
+    # ──────────────────────────────────────────────
+
+    def connectionless_info(self, **params: Any) -> dict[str, Any]:
+        """Send/receive connectionless information.
+
+        Args:
+            **params: Information parameters.
+        """
+        msg: dict[str, Any] = {"message": "connectionless_info"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def eth_pdu(
+        self,
+        imsi: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Send Ethernet PDU.
+
+        Args:
+            imsi: IMSI of target UE.
+            **params: PDU parameters.
+        """
+        msg: dict[str, Any] = {"message": "eth_pdu"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        msg.update(params)
+        return self._client.send(msg)
+
+    def non_ip_data(
+        self,
+        imsi: str | None = None,
+        data: str | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Send non-IP data (NB-IoT/LTE-M).
+
+        Args:
+            imsi: IMSI of target UE.
+            data: Data to send (hex encoded).
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {"message": "non_ip_data"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        if data is not None:
+            msg["data"] = data
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # URSP (UE Route Selection Policy)
+    # ──────────────────────────────────────────────
+
+    def ursp_rules(
+        self,
+        imsi: str | None = None,
+        rules: list[dict[str, Any]] | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Get or set URSP rules for a UE.
+
+        Args:
+            imsi: IMSI of target UE.
+            rules: URSP rules to set.
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {"message": "ursp_rules"}
+        if imsi is not None:
+            msg["imsi"] = imsi
+        if rules is not None:
+            msg["rules"] = rules
+        msg.update(params)
+        return self._client.send(msg)

@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-
 from client.websocket.exceptions import AmariError
+from fastapi import APIRouter, Depends, Query
 
 from ..exceptions import map_amarisoft_exception
 from ..manager import CallboxManager, get_manager
@@ -22,21 +21,6 @@ router = APIRouter(prefix="/ims", tags=["IMS"])
 # ──────────────────────────────────────────────
 # System Information
 # ──────────────────────────────────────────────
-
-
-@router.get(
-    "/version",
-    summary="Get IMS version",
-    description="Get the software version of the IMS service.",
-)
-async def get_version(
-    manager: CallboxManager = Depends(get_manager),
-) -> dict[str, Any]:
-    """Get IMS version information."""
-    try:
-        return manager.ims.version()
-    except AmariError as e:
-        raise map_amarisoft_exception(e, "IMS") from e
 
 
 @router.get(

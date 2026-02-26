@@ -25,19 +25,21 @@ Usage:
 import argparse
 import json
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
-from client.http import Callbox, APIError
+from client.http import APIError, Callbox
 
 
 # ══════════════════════════════════════════════════════════════
 # THROUGHPUT TEST CONFIGURATION
 # ══════════════════════════════════════════════════════════════
 
+
 class RATMode(Enum):
     """Radio Access Technology mode."""
+
     LTE_FDD = "lte_fdd"
     LTE_TDD = "lte_tdd"
     NR_FDD = "nr_fdd"
@@ -48,6 +50,7 @@ class RATMode(Enum):
 @dataclass
 class ThroughputTestConfig:
     """Configuration for a throughput test."""
+
     name: str
     rat_mode: RATMode
     description: str
@@ -121,9 +124,11 @@ THROUGHPUT_TEST_CONFIGS = {
 # THROUGHPUT TEST RESULT
 # ══════════════════════════════════════════════════════════════
 
+
 @dataclass
 class ThroughputTestResult:
     """Result of a throughput test."""
+
     config_name: str
     rat_mode: str
     bandwidth_mhz: int
@@ -155,6 +160,7 @@ class ThroughputTestResult:
 # ══════════════════════════════════════════════════════════════
 # THROUGHPUT TEST SUITE
 # ══════════════════════════════════════════════════════════════
+
 
 class ThroughputTestSuite:
     """Comprehensive throughput test suite via HTTP REST API."""
@@ -202,7 +208,10 @@ class ThroughputTestSuite:
             return {}
 
         try:
-            return self.cb.enb.cell_list()
+            # cell_list() not supported - use config_get()
+            config = self.cb.enb.config_get()
+            cells = config.get("cell_list", config.get("cells", []))
+            return {"cell_list": cells if isinstance(cells, list) else []}
         except APIError:
             return {}
 
@@ -236,11 +245,13 @@ class ThroughputTestSuite:
                     total_dl += cell.get("dl_bitrate", 0)
                     total_ul += cell.get("ul_bitrate", 0)
 
-                samples.append({
-                    "timestamp": time.monotonic() - start,
-                    "dl_bitrate": total_dl,
-                    "ul_bitrate": total_ul,
-                })
+                samples.append(
+                    {
+                        "timestamp": time.monotonic() - start,
+                        "dl_bitrate": total_dl,
+                        "ul_bitrate": total_ul,
+                    }
+                )
 
             except APIError:
                 pass
@@ -300,11 +311,13 @@ class ThroughputTestSuite:
                 dl_mbps = total_dl / 1_000_000
                 ul_mbps = total_ul / 1_000_000
 
-                samples.append({
-                    "timestamp": elapsed,
-                    "dl_bitrate": total_dl,
-                    "ul_bitrate": total_ul,
-                })
+                samples.append(
+                    {
+                        "timestamp": elapsed,
+                        "dl_bitrate": total_dl,
+                        "ul_bitrate": total_ul,
+                    }
+                )
 
                 print(f"  {elapsed:6.1f}s  {dl_mbps:>12.2f}  {ul_mbps:>12.2f}")
 
@@ -329,8 +342,16 @@ class ThroughputTestSuite:
             ul_avg = ul_max = ul_min = 0.0
 
         # Calculate efficiency
-        dl_eff = (dl_avg / config.expected_dl_mbps * 100) if config.expected_dl_mbps > 0 else 0
-        ul_eff = (ul_avg / config.expected_ul_mbps * 100) if config.expected_ul_mbps > 0 else 0
+        dl_eff = (
+            (dl_avg / config.expected_dl_mbps * 100)
+            if config.expected_dl_mbps > 0
+            else 0
+        )
+        ul_eff = (
+            (ul_avg / config.expected_ul_mbps * 100)
+            if config.expected_ul_mbps > 0
+            else 0
+        )
 
         # Determine pass/fail (70% threshold)
         passed = (dl_eff >= 70 or ul_eff >= 70) or ue_count == 0
@@ -359,10 +380,14 @@ class ThroughputTestSuite:
 
         # Print summary
         print(f"\n  Results:")
-        print(f"    DL: avg={dl_avg:.2f}, max={dl_max:.2f}, min={dl_min:.2f} Mbps "
-              f"({dl_eff:.1f}% efficiency)")
-        print(f"    UL: avg={ul_avg:.2f}, max={ul_max:.2f}, min={ul_min:.2f} Mbps "
-              f"({ul_eff:.1f}% efficiency)")
+        print(
+            f"    DL: avg={dl_avg:.2f}, max={dl_max:.2f}, min={dl_min:.2f} Mbps "
+            f"({dl_eff:.1f}% efficiency)"
+        )
+        print(
+            f"    UL: avg={ul_avg:.2f}, max={ul_max:.2f}, min={ul_min:.2f} Mbps "
+            f"({ul_eff:.1f}% efficiency)"
+        )
         print(f"    Samples: {len(samples)}")
         print(f"\n  Status: {'✓ PASS' if passed else '✗ FAIL'}")
 
@@ -412,8 +437,10 @@ class ThroughputTestSuite:
         print("THROUGHPUT TEST SUMMARY")
         print("═" * 90)
 
-        print(f"\n{'Config':<25} {'RAT':<10} {'BW':<8} {'DL Avg':>10} {'UL Avg':>10} "
-              f"{'DL Eff':>8} {'Status':<8}")
+        print(
+            f"\n{'Config':<25} {'RAT':<10} {'BW':<8} {'DL Avg':>10} {'UL Avg':>10} "
+            f"{'DL Eff':>8} {'Status':<8}"
+        )
         print("-" * 90)
 
         passed = failed = 0
@@ -424,9 +451,11 @@ class ThroughputTestSuite:
             else:
                 failed += 1
 
-            print(f"{r.config_name:<25} {r.rat_mode:<10} {r.bandwidth_mhz:>5}MHz "
-                  f"{r.dl_avg_mbps:>10.2f} {r.ul_avg_mbps:>10.2f} "
-                  f"{r.dl_efficiency:>7.1f}% {status:<8}")
+            print(
+                f"{r.config_name:<25} {r.rat_mode:<10} {r.bandwidth_mhz:>5}MHz "
+                f"{r.dl_avg_mbps:>10.2f} {r.ul_avg_mbps:>10.2f} "
+                f"{r.dl_efficiency:>7.1f}% {status:<8}"
+            )
 
         print("-" * 90)
         print(f"\nTotal: {len(self.results)} tests, {passed} passed, {failed} failed")
@@ -438,8 +467,12 @@ class ThroughputTestSuite:
             avg_dl_eff = sum(r.dl_efficiency for r in self.results) / len(self.results)
             avg_ul_eff = sum(r.ul_efficiency for r in self.results) / len(self.results)
 
-            print(f"\nAggregate DL: {total_dl:.2f} Mbps (avg efficiency: {avg_dl_eff:.1f}%)")
-            print(f"Aggregate UL: {total_ul:.2f} Mbps (avg efficiency: {avg_ul_eff:.1f}%)")
+            print(
+                f"\nAggregate DL: {total_dl:.2f} Mbps (avg efficiency: {avg_dl_eff:.1f}%)"
+            )
+            print(
+                f"Aggregate UL: {total_ul:.2f} Mbps (avg efficiency: {avg_ul_eff:.1f}%)"
+            )
 
     def export_results(self, output_file: str):
         """Export results to JSON file."""
@@ -454,11 +487,13 @@ class ThroughputTestSuite:
                 "failed": sum(1 for r in self.results if not r.passed),
                 "avg_dl_efficiency": (
                     sum(r.dl_efficiency for r in self.results) / len(self.results)
-                    if self.results else 0
+                    if self.results
+                    else 0
                 ),
                 "avg_ul_efficiency": (
                     sum(r.ul_efficiency for r in self.results) / len(self.results)
-                    if self.results else 0
+                    if self.results
+                    else 0
                 ),
             },
         }
@@ -472,6 +507,7 @@ class ThroughputTestSuite:
 # ══════════════════════════════════════════════════════════════
 # MAIN
 # ══════════════════════════════════════════════════════════════
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -494,24 +530,30 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--url", default="http://127.0.0.1:9010",
+        "--url",
+        default="http://127.0.0.1:9010",
         help="REST API service URL",
     )
     parser.add_argument("--timeout", type=float, default=10.0, help="Request timeout")
     parser.add_argument(
-        "--config", nargs="+", default=None,
+        "--config",
+        nargs="+",
+        default=None,
         help="Specific configs to test",
     )
     parser.add_argument(
-        "--all", action="store_true",
+        "--all",
+        action="store_true",
         help="Run all test configurations",
     )
     parser.add_argument(
-        "--output", default=None,
+        "--output",
+        default=None,
         help="Export results to JSON file",
     )
     parser.add_argument(
-        "--list-configs", action="store_true",
+        "--list-configs",
+        action="store_true",
         help="List available test configurations and exit",
     )
     return parser.parse_args()
@@ -521,15 +563,19 @@ def list_configs():
     """Print available test configurations."""
     print("\nAvailable Throughput Test Configurations:")
     print("=" * 90)
-    print(f"{'Name':<20} {'RAT':<10} {'BW':<8} {'MIMO':<6} "
-          f"{'Expected DL':>12} {'Expected UL':>12}")
+    print(
+        f"{'Name':<20} {'RAT':<10} {'BW':<8} {'MIMO':<6} "
+        f"{'Expected DL':>12} {'Expected UL':>12}"
+    )
     print("-" * 90)
 
     for name, config in THROUGHPUT_TEST_CONFIGS.items():
-        print(f"{name:<20} {config.rat_mode.value:<10} {config.bandwidth_mhz:>5}MHz "
-              f"{config.mimo_layers:>4}x{config.mimo_layers} "
-              f"{config.expected_dl_mbps:>10.0f} Mbps "
-              f"{config.expected_ul_mbps:>10.0f} Mbps")
+        print(
+            f"{name:<20} {config.rat_mode.value:<10} {config.bandwidth_mhz:>5}MHz "
+            f"{config.mimo_layers:>4}x{config.mimo_layers} "
+            f"{config.expected_dl_mbps:>10.0f} Mbps "
+            f"{config.expected_ul_mbps:>10.0f} Mbps"
+        )
 
     print("-" * 90)
     print(f"\nTotal: {len(THROUGHPUT_TEST_CONFIGS)} configurations")

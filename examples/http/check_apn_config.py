@@ -23,7 +23,7 @@ from __future__ import annotations
 import argparse
 from typing import Any
 
-from client.http import Callbox, APIError
+from client.http import APIError, Callbox
 
 
 def check_apn_via_http(url: str) -> dict[str, Any]:
@@ -33,7 +33,7 @@ def check_apn_via_http(url: str) -> dict[str, Any]:
         url: REST API service URL.
 
     Returns:
-        Session and bearer information from MME.
+        UE and config information from MME.
     """
     print(f"\n{'='*60}")
     print("CHECKING APN CONFIGURATION VIA HTTP API")
@@ -41,28 +41,17 @@ def check_apn_via_http(url: str) -> dict[str, Any]:
     print(f"URL: {url}")
 
     result = {
-        "sessions": {},
-        "bearers": {},
         "ues": {},
         "config": {},
+        "erabs": {},
     }
 
     with Callbox(url) as cb:
         # Check service status
         print(f"\nService Status: {cb.status}")
 
-        # Get active sessions (shows APNs in use by connected UEs)
+        # Get UE info (session_get/bearer_get not supported)
         if cb.status.get("mme"):
-            try:
-                result["sessions"] = cb.mme.session_get()
-            except APIError as e:
-                print(f"  Session query error: {e}")
-
-            try:
-                result["bearers"] = cb.mme.bearer_get()
-            except APIError as e:
-                print(f"  Bearer query error: {e}")
-
             try:
                 result["ues"] = cb.mme.ue_get()
             except APIError as e:
@@ -72,8 +61,15 @@ def check_apn_via_http(url: str) -> dict[str, Any]:
                 result["config"] = cb.mme.config_get()
             except APIError as e:
                 print(f"  Config query error: {e}")
+
+        # Get E-RABs from eNB
+        if cb.status.get("enb"):
+            try:
+                result["erabs"] = cb.enb.erab_get()
+            except APIError as e:
+                print(f"  E-RAB query error: {e}")
         else:
-            print("MME not connected")
+            print("eNB not connected")
 
     return result
 
@@ -130,6 +126,32 @@ def display_bearers(bearers: dict[str, Any]) -> None:
         print(f"\n  Bearer ID: {bearer_id}")
         print(f"  QCI:       {qci}")
         print(f"  Type:      {bearer_type}")
+
+
+def display_erabs(erabs: dict[str, Any]) -> None:
+    """Display E-RAB information.
+
+    Args:
+        erabs: E-RAB data from eNB.
+    """
+    erab_list = erabs.get("erab_list", [])
+
+    if not erab_list:
+        print("\nNo active E-RABs.")
+        return
+
+    print(f"\n{'='*60}")
+    print("ACTIVE E-RABs")
+    print(f"{'='*60}")
+
+    for erab in erab_list:
+        erab_id = erab.get("erab_id", "N/A")
+        qci = erab.get("qci", "N/A")
+        enb_ue_id = erab.get("enb_ue_id", "N/A")
+
+        print(f"\n  E-RAB ID:   {erab_id}")
+        print(f"  eNB UE ID:  {enb_ue_id}")
+        print(f"  QCI:        {qci}")
 
 
 def display_ue_apn_info(ues: dict[str, Any]) -> None:
@@ -236,9 +258,8 @@ to the callbox may be needed to read the MME config file directly.
         data = check_apn_via_http(args.url)
 
         # Display results
-        display_active_sessions(data["sessions"])
-        display_bearers(data["bearers"])
         display_ue_apn_info(data["ues"])
+        display_erabs(data["erabs"])
         display_config_apns(data["config"])
 
         print(f"\n{'='*60}")

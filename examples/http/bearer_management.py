@@ -12,7 +12,7 @@ import argparse
 import time
 from pprint import pprint
 
-from client.http import Callbox, APIError, CapabilityChecker, ValidationError
+from client.http import APIError, Callbox, CapabilityChecker, ValidationError
 
 
 def parse_args():
@@ -53,18 +53,12 @@ def main():
     try:
         with Callbox(args.url, api_key=args.api_key) as cb:
 
-            # --- Current sessions and bearers ---
+            # --- UE list and E-RABs (session_get/bearer_get not supported) ---
             print("=" * 60)
-            print("MME — Current Sessions")
+            print("MME — UE Information")
             print("=" * 60)
-            sessions = cb.mme.session_get()
-            pprint(sessions)
-
-            print("\n" + "=" * 60)
-            print("MME — Current Bearers")
-            print("=" * 60)
-            bearers = cb.mme.bearer_get()
-            pprint(bearers)
+            ues = cb.mme.ue_get()
+            pprint(ues)
 
             print("\n" + "=" * 60)
             print("eNB — E-RAB Information")
@@ -99,10 +93,13 @@ def main():
                 qci = 1
                 valid, info = validate_qci(qci)
                 if valid:
-                    print(f"QCI {qci}: {info.get('name', 'Valid')} ({info.get('type', 'unknown')})")
+                    print(
+                        f"QCI {qci}: {info.get('name', 'Valid')} ({info.get('type', 'unknown')})"
+                    )
                     try:
                         result = cb.enb.ue_activate_dedicated_bearer(
-                            enb_ue_id=enb_ue_id, qci=qci,
+                            enb_ue_id=enb_ue_id,
+                            qci=qci,
                         )
                         pprint(result)
                     except APIError as e:
@@ -112,47 +109,49 @@ def main():
 
                 time.sleep(2)
 
-                # Show updated bearer list
-                print("\nBearers after activation:")
-                pprint(cb.mme.bearer_get())
+                # Show updated E-RAB list
+                print("\nE-RABs after activation:")
+                pprint(cb.enb.erab_get())
 
             # --- Modify bearer QoS ---
             print("\n" + "=" * 60)
             print("MME — Modify bearer QoS")
             print("=" * 60)
 
-            # Find an existing erab_id to modify
-            current_bearers = cb.mme.bearer_get()
-            bearer_list = current_bearers.get("bearer_list", [])
-            if bearer_list:
-                erab_id = bearer_list[0].get("erab_id")
+            # Find an existing erab from eNB E-RABs
+            current_erabs = cb.enb.erab_get()
+            erab_list = current_erabs.get("erab_list", [])
+            if erab_list:
+                erab_id = erab_list[0].get("erab_id")
                 if erab_id is not None:
                     print(f"Modifying bearer erab_id={erab_id} to QCI=9")
                     try:
                         result = cb.mme.ue_modify_bearer(
-                            imsi=imsi, erab_id=erab_id, qci=9,
+                            imsi=imsi,
+                            erab_id=erab_id,
+                            qci=9,
                         )
                         pprint(result)
                     except APIError as e:
                         print(f"Modify error: {e}")
             else:
-                print("No bearers found to modify.")
+                print("No E-RABs found to modify.")
 
             # --- Deactivate a dedicated bearer ---
             # Only deactivate non-default bearers (erab_id > 5 typically)
             print("\n" + "=" * 60)
             print("MME — Deactivate dedicated bearer")
             print("=" * 60)
-            current_bearers = cb.mme.bearer_get()
-            bearer_list = current_bearers.get("bearer_list", [])
-            dedicated = [b for b in bearer_list
-                         if b.get("erab_id", 0) > 5]
+            current_erabs = cb.enb.erab_get()
+            erab_list = current_erabs.get("erab_list", [])
+            dedicated = [b for b in erab_list if b.get("erab_id", 0) > 5]
             if dedicated:
                 erab_id = dedicated[0]["erab_id"]
                 print(f"Deactivating bearer erab_id={erab_id}")
                 try:
                     result = cb.mme.ue_deactivate_bearer(
-                        erab_id=erab_id, imsi=imsi,
+                        erab_id=erab_id,
+                        imsi=imsi,
                     )
                     pprint(result)
                 except APIError as e:
@@ -162,9 +161,9 @@ def main():
 
             # --- Final state ---
             print("\n" + "=" * 60)
-            print("Final Bearer State")
+            print("Final E-RAB State")
             print("=" * 60)
-            pprint(cb.mme.bearer_get())
+            pprint(cb.enb.erab_get())
 
     except APIError as e:
         print(f"\nError: {e}")

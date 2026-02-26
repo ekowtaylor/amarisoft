@@ -140,23 +140,23 @@ def check_apn_via_websocket(host: str) -> dict[str, Any]:
     """Check APN-related info via WebSocket API.
 
     Note: The WebSocket API doesn't directly expose pdn_list,
-    but we can get session/bearer info for connected UEs.
+    but we can get UE info and config for connected UEs.
 
     Args:
         host: Callbox IP address.
 
     Returns:
-        Session information from MME.
+        UE information from MME.
     """
     print(f"\n{'='*60}")
-    print("CHECKING ACTIVE SESSIONS VIA WEBSOCKET")
+    print("CHECKING ACTIVE UEs VIA WEBSOCKET")
     print(f"{'='*60}")
 
     with Callbox(host) as cb:
-        # Get active sessions (shows APNs in use by connected UEs)
+        # Get UE info (session_get not supported)
         if cb.status.get("mme"):
-            sessions = cb.mme.session_get()
-            return sessions
+            ue_info = cb.mme.ue_get()
+            return ue_info
         else:
             print("MME not connected")
             return {}

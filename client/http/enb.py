@@ -25,10 +25,6 @@ class ENBApi:
     def __init__(self, client: "HTTPClient"):
         self._client = client
 
-    def version(self) -> dict[str, Any]:
-        """Get eNB/gNB version information."""
-        return self._client.get("/enb/version")
-
     def help(self) -> dict[str, Any]:
         """Get list of available API commands."""
         return self._client.get("/enb/help")
@@ -159,36 +155,6 @@ class ENBApi:
         """
         return self._client.post(f"/enb/cells/{cell_id}/gain", data={"gain": gain})
 
-    def cell_activate(self, cell_id: int) -> dict[str, Any]:
-        """Activate a cell.
-
-        Args:
-            cell_id: The cell ID to activate.
-
-        Returns:
-            Response from the API.
-        """
-        return self._client.post(f"/enb/cells/{cell_id}/activate")
-
-    def cell_deactivate(self, cell_id: int) -> dict[str, Any]:
-        """Deactivate a cell.
-
-        Args:
-            cell_id: The cell ID to deactivate.
-
-        Returns:
-            Response from the API.
-        """
-        return self._client.post(f"/enb/cells/{cell_id}/deactivate")
-
-    def mib_update(self, cell_id: int) -> dict[str, Any]:
-        """Trigger MIB update for a cell."""
-        return self._client.post(f"/enb/cells/{cell_id}/mib-update")
-
-    def sib_update(self, cell_id: int) -> dict[str, Any]:
-        """Trigger SIB update for a cell."""
-        return self._client.post(f"/enb/cells/{cell_id}/sib-update")
-
     def paging(self, imsi: str, domain: str = "ps") -> dict[str, Any]:
         """Send paging to a UE.
 
@@ -250,10 +216,6 @@ class ENBApi:
         if max_size:
             data["max_size"] = max_size
         return self._client.post("/enb/logs/config", data=data)
-
-    def license(self) -> dict[str, Any]:
-        """Get license information."""
-        return self._client.get("/enb/license")
 
     def quit(self) -> dict[str, Any]:
         """Terminate the eNB/gNB process. Use with caution!"""

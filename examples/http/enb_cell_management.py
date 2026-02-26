@@ -13,7 +13,7 @@ Demonstrates:
 import argparse
 from pprint import pprint
 
-from client.http import Callbox, APIError
+from client.http import APIError, Callbox
 
 
 def parse_args():
@@ -28,18 +28,18 @@ def main():
 
     try:
         with Callbox(args.url, api_key=args.api_key) as cb:
-            # --- System info ---
+            # --- Config info (replaces system_info which is not supported) ---
             print("=" * 60)
-            print("System Info")
+            print("Configuration Info")
             print("=" * 60)
-            info = cb.enb.system_info()
-            pprint(info)
+            config = cb.enb.config_get()
+            pprint(config)
 
-            # --- Cell list ---
+            # --- Cell list from config ---
             print("\n" + "=" * 60)
-            print("Cell List")
+            print("Cell List (from config)")
             print("=" * 60)
-            cells = cb.enb.cell_list()
+            cells = cb.enb.cells_get()
             pprint(cells)
 
             # --- Statistics ---

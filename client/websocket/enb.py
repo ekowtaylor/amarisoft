@@ -21,20 +21,10 @@ class ENBApi(ServiceApi):
     DEFAULT_PORT = 9001
 
     # ──────────────────────────────────────────────
-    # System
-    # ──────────────────────────────────────────────
-
-    def system_info(self) -> dict[str, Any]:
-        """Retrieve overall system status of the eNB/gNB."""
-        return self._client.send({"message": "system_info"})
-
-    # ──────────────────────────────────────────────
     # Configuration (cell-level)
     # ──────────────────────────────────────────────
 
-    def config_set_cell(
-        self, cell_id: int, **params: Any
-    ) -> dict[str, Any]:
+    def config_set_cell(self, cell_id: int, **params: Any) -> dict[str, Any]:
         """Set configuration parameters for a specific cell.
 
         Args:
@@ -45,10 +35,12 @@ class ENBApi(ServiceApi):
 
             enb.config_set_cell(1, inactivity_timer=6000, pdsch_mcs=15)
         """
-        return self._client.send({
-            "message": "config_set",
-            "cells": {str(cell_id): params},
-        })
+        return self._client.send(
+            {
+                "message": "config_set",
+                "cells": {str(cell_id): params},
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Statistics (override for extra params)
@@ -107,15 +99,36 @@ class ENBApi(ServiceApi):
             cell_id: Target cell identifier.
             gain: Gain value in dB (can be negative).
         """
-        return self._client.send({
-            "message": "cell_gain",
-            "cell_id": cell_id,
-            "gain": gain,
-        })
+        return self._client.send(
+            {
+                "message": "cell_gain",
+                "cell_id": cell_id,
+                "gain": gain,
+            }
+        )
 
-    def cell_list(self) -> dict[str, Any]:
-        """List all configured cells and their status."""
-        return self._client.send({"message": "cell_list"})
+    def rrc_release(
+        self,
+        enb_ue_id: int,
+        cause: str | None = None,
+        redirect_freq: int | None = None,
+    ) -> dict[str, Any]:
+        """Release RRC connection for a UE.
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+            cause: Release cause.
+            redirect_freq: Redirect frequency (EARFCN).
+        """
+        msg: dict[str, Any] = {
+            "message": "rrc_cnx_release",
+            "enb_ue_id": enb_ue_id,
+        }
+        if cause is not None:
+            msg["cause"] = cause
+        if redirect_freq is not None:
+            msg["redirect_freq"] = redirect_freq
+        return self._client.send(msg)
 
     # ──────────────────────────────────────────────
     # RF Control
@@ -153,14 +166,14 @@ class ENBApi(ServiceApi):
         Args:
             enb_ue_id: The eNB UE identifier.
         """
-        return self._client.send({
-            "message": "rrc_cnx_release",
-            "enb_ue_id": enb_ue_id,
-        })
+        return self._client.send(
+            {
+                "message": "rrc_cnx_release",
+                "enb_ue_id": enb_ue_id,
+            }
+        )
 
-    def rrc_cnx_reconf(
-        self, enb_ue_id: int, **params: Any
-    ) -> dict[str, Any]:
+    def rrc_cnx_reconf(self, enb_ue_id: int, **params: Any) -> dict[str, Any]:
         """Trigger RRC connection reconfiguration.
 
         Args:
@@ -174,20 +187,20 @@ class ENBApi(ServiceApi):
         msg.update(params)
         return self._client.send(msg)
 
-    def rrc_ue_info_req(
-        self, enb_ue_id: int, req_mask: int
-    ) -> dict[str, Any]:
+    def rrc_ue_info_req(self, enb_ue_id: int, req_mask: int) -> dict[str, Any]:
         """Request UE information via RRC.
 
         Args:
             enb_ue_id: The eNB UE identifier.
             req_mask: Bitmask specifying requested information.
         """
-        return self._client.send({
-            "message": "rrc_ue_info_req",
-            "enb_ue_id": enb_ue_id,
-            "req_mask": req_mask,
-        })
+        return self._client.send(
+            {
+                "message": "rrc_ue_info_req",
+                "enb_ue_id": enb_ue_id,
+                "req_mask": req_mask,
+            }
+        )
 
     def rrc_ue_cap_enquiry(self, enb_ue_id: int) -> dict[str, Any]:
         """Query UE radio capabilities.
@@ -195,20 +208,12 @@ class ENBApi(ServiceApi):
         Args:
             enb_ue_id: The eNB UE identifier.
         """
-        return self._client.send({
-            "message": "rrc_ue_cap_enquiry",
-            "enb_ue_id": enb_ue_id,
-        })
-
-    def rrc_procedure_filter(self, **params: Any) -> dict[str, Any]:
-        """Control RRC procedure rejection filters.
-
-        Args:
-            **params: Filter parameters.
-        """
-        msg: dict[str, Any] = {"message": "rrc_procedure_filter"}
-        msg.update(params)
-        return self._client.send(msg)
+        return self._client.send(
+            {
+                "message": "rrc_ue_cap_enquiry",
+                "enb_ue_id": enb_ue_id,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Paging
@@ -229,32 +234,34 @@ class ENBApi(ServiceApi):
             paging_type: Paging type (``"s1"`` or ``"x2"``).
             cn_domain: Core network domain (``"ps"`` or ``"cs"``).
         """
-        return self._client.send({
-            "message": "page_ue",
-            "cell_id": cell_ids,
-            "imsi": imsi,
-            "type": paging_type,
-            "cn_domain": cn_domain,
-        })
+        return self._client.send(
+            {
+                "message": "page_ue",
+                "cell_id": cell_ids,
+                "imsi": imsi,
+                "type": paging_type,
+                "cn_domain": cn_domain,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # SIB (System Information Block)
     # ──────────────────────────────────────────────
 
-    def sib_set(
-        self, cell_id: int, sib_data: dict[str, Any]
-    ) -> dict[str, Any]:
+    def sib_set(self, cell_id: int, sib_data: dict[str, Any]) -> dict[str, Any]:
         """Configure System Information Block parameters for a cell.
 
         Args:
             cell_id: Target cell identifier.
             sib_data: SIB configuration data.
         """
-        return self._client.send({
-            "message": "sib_set",
-            "cell_id": cell_id,
-            **sib_data,
-        })
+        return self._client.send(
+            {
+                "message": "sib_set",
+                "cell_id": cell_id,
+                **sib_data,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # BWP (Bandwidth Part) - 5G NR
@@ -386,56 +393,6 @@ class ENBApi(ServiceApi):
         return self.config_set_cell(cell_id, **params)
 
     # ──────────────────────────────────────────────
-    # IQ Dump / Constellation
-    # ──────────────────────────────────────────────
-
-    def trx_iq_dump(
-        self,
-        duration: float,
-        rx_filename: str | None = None,
-        tx_filename: str | None = None,
-    ) -> dict[str, Any]:
-        """Capture IQ samples for analysis.
-
-        Args:
-            duration: Capture duration in seconds.
-            rx_filename: Path to save RX IQ samples.
-            tx_filename: Path to save TX IQ samples.
-        """
-        msg: dict[str, Any] = {
-            "message": "trx_iq_dump",
-            "duration": duration,
-        }
-        if rx_filename is not None:
-            msg["rx_filename"] = rx_filename
-        if tx_filename is not None:
-            msg["tx_filename"] = tx_filename
-        return self._client.send(msg)
-
-    def register_channel(self, channel: str) -> dict[str, Any]:
-        """Register to receive constellation data for a PHY channel.
-
-        Args:
-            channel: Channel name (e.g., ``"pusch"``, ``"srs"``).
-        """
-        return self._client.send({
-            "message": "register",
-            "register": channel,
-        })
-
-    def unregister_channel(self, channel: str) -> dict[str, Any]:
-        """Stop receiving constellation data for a PHY channel.
-
-        Args:
-            channel: Channel name to unregister.
-        """
-        return self._client.send({
-            "message": "register",
-            "register": channel,
-            "enable": False,
-        })
-
-    # ──────────────────────────────────────────────
     # PDCCH
     # ──────────────────────────────────────────────
 
@@ -445,10 +402,12 @@ class ENBApi(ServiceApi):
         Args:
             enb_ue_id: The eNB UE identifier.
         """
-        return self._client.send({
-            "message": "pdcch_order_prach",
-            "enb_ue_id": enb_ue_id,
-        })
+        return self._client.send(
+            {
+                "message": "pdcch_order_prach",
+                "enb_ue_id": enb_ue_id,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Bearer Management
@@ -490,11 +449,13 @@ class ENBApi(ServiceApi):
             cell_id: Target cell identifier.
             disable: True to disable UL, False to enable.
         """
-        return self._client.send({
-            "message": "cell_ul_disable",
-            "cell_id": cell_id,
-            "disable": disable,
-        })
+        return self._client.send(
+            {
+                "message": "cell_ul_disable",
+                "cell_id": cell_id,
+                "disable": disable,
+            }
+        )
 
     def noise_level(
         self,
@@ -545,12 +506,14 @@ class ENBApi(ServiceApi):
             scell_ids: List of secondary cell IDs.
             activate: True to activate, False to deactivate.
         """
-        return self._client.send({
-            "message": "scells_act_deact",
-            "enb_ue_id": enb_ue_id,
-            "scell_id": scell_ids,
-            "activate": activate,
-        })
+        return self._client.send(
+            {
+                "message": "scells_act_deact",
+                "enb_ue_id": enb_ue_id,
+                "scell_id": scell_ids,
+                "activate": activate,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # RF Control (Additional)
@@ -643,10 +606,12 @@ class ENBApi(ServiceApi):
         Args:
             enb_ue_id: The eNB UE identifier.
         """
-        return self._client.send({
-            "message": "mr_dc_scg_release",
-            "enb_ue_id": enb_ue_id,
-        })
+        return self._client.send(
+            {
+                "message": "mr_dc_scg_release",
+                "enb_ue_id": enb_ue_id,
+            }
+        )
 
     def mr_dc_split_dl_ratio_change(
         self,
@@ -659,11 +624,13 @@ class ENBApi(ServiceApi):
             enb_ue_id: The eNB UE identifier.
             ratio: Split ratio percentage (0-100).
         """
-        return self._client.send({
-            "message": "mr_dc_split_dl_ratio_change",
-            "enb_ue_id": enb_ue_id,
-            "ratio": ratio,
-        })
+        return self._client.send(
+            {
+                "message": "mr_dc_split_dl_ratio_change",
+                "enb_ue_id": enb_ue_id,
+                "ratio": ratio,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Neighbor Cell Management
@@ -680,11 +647,13 @@ class ENBApi(ServiceApi):
             cell_id: Source cell identifier.
             ncell: Neighbor cell configuration.
         """
-        return self._client.send({
-            "message": "ncell_list_add",
-            "cell_id": cell_id,
-            "ncell": ncell,
-        })
+        return self._client.send(
+            {
+                "message": "ncell_list_add",
+                "cell_id": cell_id,
+                "ncell": ncell,
+            }
+        )
 
     def ncell_list_del(
         self,
@@ -697,11 +666,13 @@ class ENBApi(ServiceApi):
             cell_id: Source cell identifier.
             ncell_id: Neighbor cell identifier to remove.
         """
-        return self._client.send({
-            "message": "ncell_list_del",
-            "cell_id": cell_id,
-            "ncell_id": ncell_id,
-        })
+        return self._client.send(
+            {
+                "message": "ncell_list_del",
+                "cell_id": cell_id,
+                "ncell_id": ncell_id,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # X2 Interface
@@ -790,10 +761,12 @@ class ENBApi(ServiceApi):
         Args:
             mme_addr: MME IP address to remove.
         """
-        return self._client.send({
-            "message": "s1delete",
-            "mme_addr": mme_addr,
-        })
+        return self._client.send(
+            {
+                "message": "s1delete",
+                "mme_addr": mme_addr,
+            }
+        )
 
     def s1_reset(
         self,
@@ -844,10 +817,12 @@ class ENBApi(ServiceApi):
         Args:
             amf_addr: AMF IP address to remove.
         """
-        return self._client.send({
-            "message": "ngdelete",
-            "amf_addr": amf_addr,
-        })
+        return self._client.send(
+            {
+                "message": "ngdelete",
+                "amf_addr": amf_addr,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # M2 Interface (MBMS)
@@ -880,82 +855,13 @@ class ENBApi(ServiceApi):
             cell_id: Target cell identifier.
             enable: True to enable, False to disable.
         """
-        return self._client.send({
-            "message": "sib14",
-            "cell_id": cell_id,
-            "enable": enable,
-        })
-
-    # ──────────────────────────────────────────────
-    # RLC Configuration
-    # ──────────────────────────────────────────────
-
-    def rlc_drop_rate(
-        self,
-        dl_drop_rate: float | None = None,
-        ul_drop_rate: float | None = None,
-    ) -> dict[str, Any]:
-        """Set RLC PDU drop rate for testing.
-
-        Args:
-            dl_drop_rate: Downlink drop rate (0.0-1.0).
-            ul_drop_rate: Uplink drop rate (0.0-1.0).
-        """
-        msg: dict[str, Any] = {"message": "rlc_drop_rate"}
-        if dl_drop_rate is not None:
-            msg["dl_drop_rate"] = dl_drop_rate
-        if ul_drop_rate is not None:
-            msg["ul_drop_rate"] = ul_drop_rate
-        return self._client.send(msg)
-
-    # ──────────────────────────────────────────────
-    # NTN (Non-Terrestrial Networks / Satellite)
-    # ──────────────────────────────────────────────
-
-    def ntn_satellite_update(
-        self,
-        **params: Any,
-    ) -> dict[str, Any]:
-        """Update NTN satellite parameters.
-
-        Args:
-            **params: Satellite parameters (position, velocity, etc.).
-        """
-        msg: dict[str, Any] = {"message": "ntn_satellite_update"}
-        msg.update(params)
-        return self._client.send(msg)
-
-    # ──────────────────────────────────────────────
-    # TRX (Transceiver)
-    # ──────────────────────────────────────────────
-
-    def trx(self, **params: Any) -> dict[str, Any]:
-        """Query or configure TRX (transceiver) parameters.
-
-        Args:
-            **params: TRX parameters.
-        """
-        msg: dict[str, Any] = {"message": "trx"}
-        msg.update(params)
-        return self._client.send(msg)
-
-    # ──────────────────────────────────────────────
-    # Logging (Additional)
-    # ──────────────────────────────────────────────
-
-    def log_bin_get(self, **params: Any) -> dict[str, Any]:
-        """Get binary log data.
-
-        Args:
-            **params: Log parameters (start_idx, count, etc.).
-        """
-        msg: dict[str, Any] = {"message": "log_bin_get"}
-        msg.update(params)
-        return self._client.send(msg)
-
-    def log_reset(self) -> dict[str, Any]:
-        """Reset log buffer."""
-        return self._client.send({"message": "log_reset"})
+        return self._client.send(
+            {
+                "message": "sib14",
+                "cell_id": cell_id,
+                "enable": enable,
+            }
+        )
 
     # ──────────────────────────────────────────────
     # Utility Commands
@@ -967,10 +873,12 @@ class ENBApi(ServiceApi):
         Args:
             message_id: ID of the message to cancel.
         """
-        return self._client.send({
-            "message": "cancel",
-            "message_id": message_id,
-        })
+        return self._client.send(
+            {
+                "message": "cancel",
+                "message_id": message_id,
+            }
+        )
 
     def echo(self, data: Any = None) -> dict[str, Any]:
         """Echo test command.
@@ -982,10 +890,6 @@ class ENBApi(ServiceApi):
         if data is not None:
             msg["data"] = data
         return self._client.send(msg)
-
-    def license(self) -> dict[str, Any]:
-        """Get license information."""
-        return self._client.send({"message": "license"})
 
     def monitor(self, **params: Any) -> dict[str, Any]:
         """Enable/disable event monitoring.
@@ -1000,3 +904,205 @@ class ENBApi(ServiceApi):
     def quit(self) -> dict[str, Any]:
         """Terminate the eNB/gNB process."""
         return self._client.send({"message": "quit"})
+
+    # ──────────────────────────────────────────────
+    # Command Execution
+    # ──────────────────────────────────────────────
+
+    def cmd(self, command: str, **params: Any) -> dict[str, Any]:
+        """Execute a shell command on the eNB/gNB.
+
+        Args:
+            command: Command string to execute.
+            **params: Additional parameters.
+        """
+        msg: dict[str, Any] = {"message": "cmd", "command": command}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def register(self, **params: Any) -> dict[str, Any]:
+        """Register for event notifications.
+
+        Args:
+            **params: Registration parameters.
+        """
+        msg: dict[str, Any] = {"message": "register"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # KPI / Logging (Additional)
+    # ──────────────────────────────────────────────
+
+    def kpi_get(self, **params: Any) -> dict[str, Any]:
+        """Get Key Performance Indicators.
+
+        Args:
+            **params: Optional filter parameters.
+        """
+        msg: dict[str, Any] = {"message": "kpi_get"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def log_bin_get(
+        self,
+        min_: int | None = None,
+        max_: int | None = None,
+    ) -> dict[str, Any]:
+        """Get binary log data.
+
+        Args:
+            min_: Minimum log index.
+            max_: Maximum log index.
+        """
+        msg: dict[str, Any] = {"message": "log_bin_get"}
+        if min_ is not None:
+            msg["min"] = min_
+        if max_ is not None:
+            msg["max"] = max_
+        return self._client.send(msg)
+
+    def log_reset(self) -> dict[str, Any]:
+        """Reset the log buffer."""
+        return self._client.send({"message": "log_reset"})
+
+    # ──────────────────────────────────────────────
+    # EN-DC / Dual Connectivity
+    # ──────────────────────────────────────────────
+
+    def en_dc_split_dl_ratio_change(
+        self,
+        enb_ue_id: int,
+        ratio: int,
+    ) -> dict[str, Any]:
+        """Change DL split ratio for EN-DC UE.
+
+        Args:
+            enb_ue_id: The eNB UE identifier.
+            ratio: Split ratio percentage (0-100).
+        """
+        return self._client.send(
+            {
+                "message": "en_dc_split_dl_ratio_change",
+                "enb_ue_id": enb_ue_id,
+                "ratio": ratio,
+            }
+        )
+
+    # ──────────────────────────────────────────────
+    # PWS (Public Warning System)
+    # ──────────────────────────────────────────────
+
+    def enb_pws_failure(self, cell_id: int | None = None) -> dict[str, Any]:
+        """Simulate PWS failure on eNB.
+
+        Args:
+            cell_id: Target cell identifier (optional).
+        """
+        msg: dict[str, Any] = {"message": "enb_pws_failure"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    def enb_pws_restart(self, cell_id: int | None = None) -> dict[str, Any]:
+        """Restart PWS on eNB.
+
+        Args:
+            cell_id: Target cell identifier (optional).
+        """
+        msg: dict[str, Any] = {"message": "enb_pws_restart"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    def gnb_pws_failure(self, cell_id: int | None = None) -> dict[str, Any]:
+        """Simulate PWS failure on gNB.
+
+        Args:
+            cell_id: Target cell identifier (optional).
+        """
+        msg: dict[str, Any] = {"message": "gnb_pws_failure"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    def gnb_pws_restart(self, cell_id: int | None = None) -> dict[str, Any]:
+        """Restart PWS on gNB.
+
+        Args:
+            cell_id: Target cell identifier (optional).
+        """
+        msg: dict[str, Any] = {"message": "gnb_pws_restart"}
+        if cell_id is not None:
+            msg["cell_id"] = cell_id
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # NTN (Non-Terrestrial Network)
+    # ──────────────────────────────────────────────
+
+    def ntn_satellite_update(self, **params: Any) -> dict[str, Any]:
+        """Update NTN satellite parameters.
+
+        Args:
+            **params: Satellite configuration parameters.
+        """
+        msg: dict[str, Any] = {"message": "ntn_satellite_update"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def ntn_sv_file_update(self, filename: str | None = None) -> dict[str, Any]:
+        """Update NTN state vector file.
+
+        Args:
+            filename: Path to state vector file.
+        """
+        msg: dict[str, Any] = {"message": "ntn_sv_file_update"}
+        if filename is not None:
+            msg["filename"] = filename
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # TRX (Transceiver)
+    # ──────────────────────────────────────────────
+
+    def trx(self, **params: Any) -> dict[str, Any]:
+        """Get or set TRX (transceiver) parameters.
+
+        Args:
+            **params: TRX configuration parameters.
+        """
+        msg: dict[str, Any] = {"message": "trx"}
+        msg.update(params)
+        return self._client.send(msg)
+
+    def trx_iq_dump(
+        self,
+        filename: str,
+        duration: float | None = None,
+        **params: Any,
+    ) -> dict[str, Any]:
+        """Dump IQ samples to file.
+
+        Args:
+            filename: Output filename for IQ dump.
+            duration: Duration in seconds.
+            **params: Additional dump parameters.
+        """
+        msg: dict[str, Any] = {"message": "trx_iq_dump", "filename": filename}
+        if duration is not None:
+            msg["duration"] = duration
+        msg.update(params)
+        return self._client.send(msg)
+
+    # ──────────────────────────────────────────────
+    # Cell List
+    # ──────────────────────────────────────────────
+
+    def cell_list(self) -> dict[str, Any]:
+        """Get list of configured cells.
+
+        Note: This may not be supported on all Amarisoft versions.
+        Falls back to extracting from config_get if not available.
+        """
+        return self._client.send({"message": "cell_list"})

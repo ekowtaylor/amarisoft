@@ -41,6 +41,7 @@ logger = logging.getLogger(__name__)
 
 class RATType(Enum):
     """Radio Access Technology types."""
+
     LTE = "4g"
     NR = "5g"
     LTE_M = "lte-m"
@@ -49,12 +50,14 @@ class RATType(Enum):
 
 class DuplexMode(Enum):
     """Duplex modes."""
+
     FDD = "fdd"
     TDD = "tdd"
 
 
 class MIMOConfig(Enum):
     """MIMO configurations."""
+
     SISO = 1
     MIMO_2x2 = 2
     MIMO_4x4 = 4
@@ -64,6 +67,7 @@ class MIMOConfig(Enum):
 @dataclass
 class SDRInfo:
     """SDR hardware information."""
+
     device_id: int
     board_id: str
     board_type: str  # SDR50, SDR100
@@ -109,7 +113,9 @@ class SDRInfo:
         import re
 
         # Extract fields using regex
-        board_id_match = re.search(r"Board ID:\s*(0x[0-9a-fA-F]+)\s*\((\w+)\)", log_text)
+        board_id_match = re.search(
+            r"Board ID:\s*(0x[0-9a-fA-F]+)\s*\((\w+)\)", log_text
+        )
         serial_match = re.search(r"Serial\s*'([^']+)'", log_text)
         fpga_match = re.search(r"FPGA revision:\s*([^\n(]+)", log_text)
         pcie_match = re.search(r"PCIe.*gen(\d+)\s*x(\d+)", log_text)
@@ -142,6 +148,7 @@ class SDRInfo:
 @dataclass
 class LicenseInfo:
     """License information and constraints."""
+
     user_name: str
     license_uid: str
     valid_until: str
@@ -192,6 +199,7 @@ class LicenseInfo:
 @dataclass
 class CellConfig:
     """Cell configuration constraints."""
+
     cell_id: int
     rat: RATType
     duplex_mode: DuplexMode
@@ -214,6 +222,7 @@ class CellConfig:
 @dataclass
 class ServicePorts:
     """Remote API service ports."""
+
     enb: int = 9001
     mme: int = 9000
     ims: int = 9002
@@ -359,10 +368,12 @@ class DeviceCapabilities:
         """Discover IMS capabilities and license info."""
         try:
             license_data = callbox.ims.license()
-            if license_data:
+            if license_data and not license_data.get("error"):
                 # Parse products from comma-separated string
                 products_str = license_data.get("products", "")
-                products = [p.strip().lower() for p in products_str.split(",") if p.strip()]
+                products = [
+                    p.strip().lower() for p in products_str.split(",") if p.strip()
+                ]
 
                 self.license_info = LicenseInfo(
                     user_name=license_data.get("user", "unknown"),
@@ -435,46 +446,56 @@ class DeviceCapabilities:
         for sdr in self.sdr_cards:
             lines.append(f"  - {sdr.board_type} (Serial: {sdr.serial})")
 
-        lines.extend([
-            "",
-            "--- License ---",
-        ])
+        lines.extend(
+            [
+                "",
+                "--- License ---",
+            ]
+        )
 
         if self.license_info:
-            lines.extend([
-                f"User: {self.license_info.user_name}",
-                f"Valid Until: {self.license_info.valid_until}",
-                f"Products: {', '.join(self.license_info.products)}",
-            ])
+            lines.extend(
+                [
+                    f"User: {self.license_info.user_name}",
+                    f"Valid Until: {self.license_info.valid_until}",
+                    f"Products: {', '.join(self.license_info.products)}",
+                ]
+            )
 
-        lines.extend([
-            "",
-            "--- Constraints ---",
-            f"Max Cells: {self.max_cells}",
-            f"Max Bandwidth: {self.max_bandwidth_mhz} MHz",
-            f"Max MIMO Layers: {self.max_mimo_layers}",
-            f"Supported RATs: {', '.join(r.value for r in self.supported_rats)}",
-            "",
-            "--- Services ---",
-        ])
+        lines.extend(
+            [
+                "",
+                "--- Constraints ---",
+                f"Max Cells: {self.max_cells}",
+                f"Max Bandwidth: {self.max_bandwidth_mhz} MHz",
+                f"Max MIMO Layers: {self.max_mimo_layers}",
+                f"Supported RATs: {', '.join(r.value for r in self.supported_rats)}",
+                "",
+                "--- Services ---",
+            ]
+        )
 
         for svc, available in self.services_available.items():
             port = getattr(self.service_ports, svc, "?")
             status = "✅" if available else "❌"
             lines.append(f"  {svc.upper()}: {status} (port {port})")
 
-        lines.extend([
-            "",
-            "--- Features ---",
-        ])
+        lines.extend(
+            [
+                "",
+                "--- Features ---",
+            ]
+        )
         for feature, enabled in self.features.items():
             status = "✅" if enabled else "❌"
             lines.append(f"  {feature}: {status}")
 
-        lines.extend([
-            "",
-            "--- Active Cells ---",
-        ])
+        lines.extend(
+            [
+                "",
+                "--- Active Cells ---",
+            ]
+        )
 
         for cell in self.cells:
             lines.append(
@@ -501,7 +522,9 @@ class DeviceCapabilities:
             ],
             "license": {
                 "user_name": self.license_info.user_name if self.license_info else None,
-                "valid_until": self.license_info.valid_until if self.license_info else None,
+                "valid_until": (
+                    self.license_info.valid_until if self.license_info else None
+                ),
                 "products": self.license_info.products if self.license_info else [],
             },
             "constraints": {
@@ -556,22 +579,91 @@ NR_BANDWIDTH_OPTIONS = {
 
 # QCI definitions
 QCI_DEFINITIONS = {
-    1: {"type": "gbr", "priority": 2, "delay_ms": 100, "loss": 1e-2, "name": "Conversational Voice"},
-    2: {"type": "gbr", "priority": 4, "delay_ms": 150, "loss": 1e-3, "name": "Conversational Video"},
-    3: {"type": "gbr", "priority": 3, "delay_ms": 50, "loss": 1e-3, "name": "Real Time Gaming"},
-    4: {"type": "gbr", "priority": 5, "delay_ms": 300, "loss": 1e-6, "name": "Non-Conv Video (Buffered)"},
-    5: {"type": "non-gbr", "priority": 1, "delay_ms": 100, "loss": 1e-6, "name": "IMS Signaling"},
-    6: {"type": "non-gbr", "priority": 6, "delay_ms": 300, "loss": 1e-6, "name": "Video (Buffered)"},
-    7: {"type": "non-gbr", "priority": 7, "delay_ms": 100, "loss": 1e-3, "name": "Voice/Video/Interactive Gaming"},
-    8: {"type": "non-gbr", "priority": 8, "delay_ms": 300, "loss": 1e-6, "name": "Video (Buffered)"},
-    9: {"type": "non-gbr", "priority": 9, "delay_ms": 300, "loss": 1e-6, "name": "Video (Buffered)/TCP"},
+    1: {
+        "type": "gbr",
+        "priority": 2,
+        "delay_ms": 100,
+        "loss": 1e-2,
+        "name": "Conversational Voice",
+    },
+    2: {
+        "type": "gbr",
+        "priority": 4,
+        "delay_ms": 150,
+        "loss": 1e-3,
+        "name": "Conversational Video",
+    },
+    3: {
+        "type": "gbr",
+        "priority": 3,
+        "delay_ms": 50,
+        "loss": 1e-3,
+        "name": "Real Time Gaming",
+    },
+    4: {
+        "type": "gbr",
+        "priority": 5,
+        "delay_ms": 300,
+        "loss": 1e-6,
+        "name": "Non-Conv Video (Buffered)",
+    },
+    5: {
+        "type": "non-gbr",
+        "priority": 1,
+        "delay_ms": 100,
+        "loss": 1e-6,
+        "name": "IMS Signaling",
+    },
+    6: {
+        "type": "non-gbr",
+        "priority": 6,
+        "delay_ms": 300,
+        "loss": 1e-6,
+        "name": "Video (Buffered)",
+    },
+    7: {
+        "type": "non-gbr",
+        "priority": 7,
+        "delay_ms": 100,
+        "loss": 1e-3,
+        "name": "Voice/Video/Interactive Gaming",
+    },
+    8: {
+        "type": "non-gbr",
+        "priority": 8,
+        "delay_ms": 300,
+        "loss": 1e-6,
+        "name": "Video (Buffered)",
+    },
+    9: {
+        "type": "non-gbr",
+        "priority": 9,
+        "delay_ms": 300,
+        "loss": 1e-6,
+        "name": "Video (Buffered)/TCP",
+    },
 }
 
 # TX/RX gain constraints
 RF_GAIN_CONSTRAINTS = {
-    "wired": {"tx_gain_min": 50, "tx_gain_max": 70, "rx_gain_min": 0, "rx_gain_max": 20},
-    "wireless": {"tx_gain_min": 80, "tx_gain_max": 95, "rx_gain_min": 50, "rx_gain_max": 70},
-    "absolute": {"tx_gain_min": 0, "tx_gain_max": 100, "rx_gain_min": 0, "rx_gain_max": 100},
+    "wired": {
+        "tx_gain_min": 50,
+        "tx_gain_max": 70,
+        "rx_gain_min": 0,
+        "rx_gain_max": 20,
+    },
+    "wireless": {
+        "tx_gain_min": 80,
+        "tx_gain_max": 95,
+        "rx_gain_min": 50,
+        "rx_gain_max": 70,
+    },
+    "absolute": {
+        "tx_gain_min": 0,
+        "tx_gain_max": 100,
+        "rx_gain_min": 0,
+        "rx_gain_max": 100,
+    },
 }
 
 # MCS constraints
@@ -744,6 +836,7 @@ class CapabilityChecker:
 # Default Callbox Configuration (CBM-2024121101)
 # ══════════════════════════════════════════════════════════════
 
+
 def get_default_capabilities() -> DeviceCapabilities:
     """Get default capabilities for CBM-2024121101 Callbox.
 
@@ -806,6 +899,7 @@ def get_default_capabilities() -> DeviceCapabilities:
 # Validation Decorators
 # ══════════════════════════════════════════════════════════════
 
+
 def validate_rf_params(
     tx_gain_param: str = "tx_gain",
     rx_gain_param: str = "rx_gain",
@@ -824,6 +918,7 @@ def validate_rf_params(
         def set_rf_config(self, tx_gain=None, rx_gain=None):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -841,7 +936,9 @@ def validate_rf_params(
                 checker.validate_rf_gain(tx_gain=tx_gain, rx_gain=rx_gain, mode=mode)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -861,6 +958,7 @@ def validate_mcs_param(
         def set_dl_config(self, pdsch_mcs=None):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -875,7 +973,9 @@ def validate_mcs_param(
                 checker.validate_mcs(mcs, rat=rat)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -891,6 +991,7 @@ def validate_qci_param(qci_param: str = "qci") -> Callable:
         def activate_bearer(self, qci=5):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -905,7 +1006,9 @@ def validate_qci_param(qci_param: str = "qci") -> Callable:
                 checker.validate_qci(qci)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -921,6 +1024,7 @@ def require_service(service: str) -> Callable:
         def make_call(self, ...):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -934,7 +1038,9 @@ def require_service(service: str) -> Callable:
                 checker.validate_service_available(service)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -950,6 +1056,7 @@ def require_feature(feature: str) -> Callable:
         def setup_volte_call(self, ...):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -963,7 +1070,9 @@ def require_feature(feature: str) -> Callable:
                 checker.validate_feature(feature)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
@@ -979,6 +1088,7 @@ def validate_bandwidth(bandwidth_param: str = "bandwidth_mhz") -> Callable:
         def configure_cell(self, bandwidth_mhz=20):
             ...
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(self, *args, **kwargs):
@@ -993,13 +1103,16 @@ def validate_bandwidth(bandwidth_param: str = "bandwidth_mhz") -> Callable:
                 checker.validate_cell_config(bandwidth_mhz=bandwidth)
 
             return func(self, *args, **kwargs)
+
         return wrapper
+
     return decorator
 
 
 # ══════════════════════════════════════════════════════════════
 # Capability Context Manager
 # ══════════════════════════════════════════════════════════════
+
 
 class ValidationContext:
     """Context manager for enabling validation on a Callbox.
@@ -1021,7 +1134,9 @@ class ValidationContext:
             cb.enb.rf(tx_gain=150)  # No error from validation
     """
 
-    def __init__(self, callbox: "Callbox", capabilities: DeviceCapabilities | None = None):
+    def __init__(
+        self, callbox: "Callbox", capabilities: DeviceCapabilities | None = None
+    ):
         """Initialize validation context.
 
         Args:

@@ -14,10 +14,10 @@ import argparse
 from pprint import pprint
 
 from client.websocket import (
-    Callbox,
     AmariConnectionError,
     AmariTimeoutError,
     AuthenticationError,
+    Callbox,
     get_default_capabilities,
 )
 
@@ -28,7 +28,8 @@ def parse_args():
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
-        "--ssl-verify", action="store_true",
+        "--ssl-verify",
+        action="store_true",
         help="Verify TLS certificates (default: no verification)",
     )
     return parser.parse_args()
@@ -49,7 +50,7 @@ def example_connect_all(host, password, ssl, ssl_verify):
         print("\nConnection status:")
         pprint(cb.status)
 
-        # Get version from each connected service
+        # Get help/stats from each connected service (version() not supported)
         for name, api, connected in [
             ("eNB", cb.enb, cb.status.get("enb")),
             ("MME", cb.mme, cb.status.get("mme")),
@@ -60,11 +61,12 @@ def example_connect_all(host, password, ssl, ssl_verify):
                 print(f"\n{name}: Not connected")
                 continue
             try:
-                version = api.version()
-                print(f"\n{name} version:")
-                pprint(version)
+                help_info = api.help()
+                print(
+                    f"\n{name}: {len(help_info.get('messages', []))} commands available"
+                )
             except Exception as e:
-                print(f"\n{name}: version() not supported ({e})")
+                print(f"\n{name}: help() not supported ({e})")
     finally:
         cb.close()
         print("\nAll connections closed.")
@@ -135,6 +137,7 @@ def example_capability_discovery(host, password, ssl, ssl_verify):
         # Example: validate MCS before applying
         print("\nValidating MCS=15 for LTE...")
         from client.websocket import RATType
+
         try:
             checker.validate_mcs(15, rat=RATType.LTE)
             print("  ✓ MCS=15 is valid")
@@ -158,6 +161,7 @@ def example_offline_validation():
 
     # Create a checker for validation
     from client.websocket import CapabilityChecker, InvalidParameterError
+
     checker = CapabilityChecker(caps)
 
     # Validate RF gain settings
@@ -185,8 +189,12 @@ def main():
     try:
         example_connect_all(args.host, args.password, args.ssl, args.ssl_verify)
         example_context_manager(args.host, args.password, args.ssl, args.ssl_verify)
-        example_individual_connections(args.host, args.password, args.ssl, args.ssl_verify)
-        example_capability_discovery(args.host, args.password, args.ssl, args.ssl_verify)
+        example_individual_connections(
+            args.host, args.password, args.ssl, args.ssl_verify
+        )
+        example_capability_discovery(
+            args.host, args.password, args.ssl, args.ssl_verify
+        )
     except AuthenticationError as e:
         print(f"\nAuthentication failed: {e}")
         print("Check the --password argument.")

@@ -11,7 +11,7 @@ Demonstrates:
 import argparse
 from pprint import pprint
 
-from client.websocket import Callbox, AmariError, CommandError
+from client.websocket import AmariError, Callbox, CommandError
 
 
 def parse_args():
@@ -20,7 +20,8 @@ def parse_args():
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
-        "--ssl-verify", action="store_true",
+        "--ssl-verify",
+        action="store_true",
         help="Verify TLS certificates (default: no verification)",
     )
     return parser.parse_args()
@@ -30,14 +31,25 @@ def main():
     args = parse_args()
 
     try:
-        with Callbox(args.host, password=args.password, ssl=args.ssl,
-                     ssl_verify=args.ssl_verify) as cb:
-            # --- IMS license info ---
+        with Callbox(
+            args.host, password=args.password, ssl=args.ssl, ssl_verify=args.ssl_verify
+        ) as cb:
+            # --- IMS info (license may not be supported on all versions) ---
             print("=" * 60)
-            print("IMS — License Information")
+            print("IMS — Service Information")
             print("=" * 60)
-            lic = cb.ims.license()
-            pprint(lic)
+            try:
+                lic = cb.ims.license()
+                pprint(lic)
+            except CommandError as e:
+                print(f"IMS license() not available: {e}")
+                try:
+                    help_info = cb.ims.help()
+                    print(
+                        f"IMS available commands: {len(help_info.get('messages', []))}"
+                    )
+                except CommandError:
+                    print("IMS service unavailable")
 
             # --- IMS users ---
             print("\n" + "=" * 60)

@@ -14,8 +14,8 @@ import argparse
 from pprint import pprint
 
 from client.websocket import (
-    Callbox,
     AmariError,
+    Callbox,
     InvalidParameterError,
     ValidationContext,
 )
@@ -27,7 +27,8 @@ def parse_args():
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
-        "--ssl-verify", action="store_true",
+        "--ssl-verify",
+        action="store_true",
         help="Verify TLS certificates (default: no verification)",
     )
     return parser.parse_args()
@@ -37,21 +38,22 @@ def main():
     args = parse_args()
 
     try:
-        with Callbox(args.host, password=args.password, ssl=args.ssl,
-                     ssl_verify=args.ssl_verify) as cb:
-            # --- System info ---
+        with Callbox(
+            args.host, password=args.password, ssl=args.ssl, ssl_verify=args.ssl_verify
+        ) as cb:
+            # --- Config info (replaces system_info which is not supported) ---
             print("=" * 60)
-            print("System Info")
+            print("Configuration Info")
             print("=" * 60)
-            info = cb.enb.system_info()
-            pprint(info)
+            config = cb.enb.config_get()
+            pprint(config)
 
-            # --- Cell list ---
+            # --- Cell list from config ---
             print("\n" + "=" * 60)
-            print("Cell List")
+            print("Cell List (from config)")
             print("=" * 60)
-            cells = cb.enb.cell_list()
-            pprint(cells)
+            cells = config.get("cell_list", config.get("cells", []))
+            pprint({"cell_list": cells})
 
             # --- Statistics ---
             print("\n" + "=" * 60)
@@ -89,8 +91,18 @@ def main():
 
                 # Test wired configuration (safe for conducted testing)
                 test_configs = [
-                    {"tx_gain": 60, "rx_gain": 10, "mode": "wired", "desc": "Wired test (valid)"},
-                    {"tx_gain": 100, "rx_gain": 10, "mode": "wired", "desc": "TX too high for wired"},
+                    {
+                        "tx_gain": 60,
+                        "rx_gain": 10,
+                        "mode": "wired",
+                        "desc": "Wired test (valid)",
+                    },
+                    {
+                        "tx_gain": 100,
+                        "rx_gain": 10,
+                        "mode": "wired",
+                        "desc": "TX too high for wired",
+                    },
                 ]
 
                 for config in test_configs:
@@ -100,7 +112,9 @@ def main():
                             rx_gain=config["rx_gain"],
                             mode=config["mode"],
                         )
-                        print(f"  ✓ {config['desc']}: tx={config['tx_gain']}, rx={config['rx_gain']}")
+                        print(
+                            f"  ✓ {config['desc']}: tx={config['tx_gain']}, rx={config['rx_gain']}"
+                        )
                         # Uncomment to actually apply:
                         # cb.enb.rf(tx_gain=config["tx_gain"], rx_gain=config["rx_gain"])
                     except InvalidParameterError as e:

@@ -27,41 +27,44 @@ import logging
 import time
 
 from client.websocket import (
-    Callbox,
     AmariError,
-    InvalidParameterError,
-    # Capabilities
-    ValidationContext,
-    get_default_capabilities,
+    Callbox,
     CapabilityChecker,
+    enable_file_logging,
+    get_default_capabilities,
+    InvalidParameterError,
     RATType,
     # Logging
     TestSession,
-    enable_file_logging,
+    # Capabilities
+    ValidationContext,
 )
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="End-to-end test with log collection"
-    )
+    parser = argparse.ArgumentParser(description="End-to-end test with log collection")
     parser.add_argument("--host", default="127.0.0.1", help="Callbox IP address")
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
-        "--ssl-verify", action="store_true",
+        "--ssl-verify",
+        action="store_true",
         help="Verify TLS certificates (default: no verification)",
     )
     parser.add_argument(
-        "--ims-port", type=int, default=9002,
+        "--ims-port",
+        type=int,
+        default=9002,
         help="IMS port (use 9003 for CBM-2024121101)",
     )
     parser.add_argument(
-        "--output-dir", default="./logs",
+        "--output-dir",
+        default="./logs",
         help="Directory for test logs (default: ./logs)",
     )
     parser.add_argument(
-        "--offline", action="store_true",
+        "--offline",
+        action="store_true",
         help="Run offline simulation (no device connection)",
     )
     return parser.parse_args()
@@ -176,14 +179,15 @@ def run_test_session(args):
                 # --- Step 4: Check Cell Status ---
                 with session.add_step("Check Cell Status"):
                     print("\nChecking cell status...")
-                    cells = cb.enb.cell_list()
-                    cell_list = cells.get("cell_list", [])
-                    print(f"  Active cells: {len(cell_list)}")
+                    # cell_list() not supported - use config_get to find cells
+                    config = cb.enb.config_get()
+                    cell_list = config.get("cell_list", config.get("cells", []))
+                    print(f"  Configured cells: {len(cell_list)}")
 
                     for cell in cell_list:
-                        print(f"    Cell {cell.get('cell_id')}: "
-                              f"Band {cell.get('band')}, "
-                              f"{cell.get('n_rb_dl', 'N/A')} RBs")
+                        cell_id = cell.get("cell_id", "?")
+                        band = cell.get("band", cell.get("dl_earfcn_band", "?"))
+                        print(f"    Cell {cell_id}: Band {band}")
 
                 # --- Step 5: Check UE Connectivity ---
                 with session.add_step("Check UE Connectivity"):
@@ -217,8 +221,10 @@ def run_test_session(args):
                         for cell in cells:
                             dl = cell.get("dl_bitrate", 0)
                             ul = cell.get("ul_bitrate", 0)
-                            print(f"  [{i+1}s] Cell {cell.get('cell_id')}: "
-                                  f"DL={dl/1e6:.2f}Mbps, UL={ul/1e6:.2f}Mbps")
+                            print(
+                                f"  [{i+1}s] Cell {cell.get('cell_id')}: "
+                                f"DL={dl/1e6:.2f}Mbps, UL={ul/1e6:.2f}Mbps"
+                            )
                         time.sleep(1)
 
                 # --- Print Log Summary ---

@@ -28,9 +28,7 @@ class TestStats:
 
     def test_sends_stats_with_params(self, mock_client, mme):
         mme.stats(samples=True)
-        mock_client.send.assert_called_once_with(
-            {"message": "stats", "samples": True}
-        )
+        mock_client.send.assert_called_once_with({"message": "stats", "samples": True})
 
 
 class TestUeGet:
@@ -58,31 +56,27 @@ class TestLogGet:
 
     def test_sends_log_get_with_timeout(self, mock_client, enb):
         enb.log_get(timeout=5.0)
-        mock_client.send.assert_called_once_with(
-            {"message": "log_get", "timeout": 5.0}
-        )
+        mock_client.send.assert_called_once_with({"message": "log_get", "timeout": 5.0})
 
 
 class TestLogSet:
     def test_sends_log_set_with_layers(self, mock_client, enb):
         enb.log_set(layers={"PHY": {"level": "debug"}})
-        mock_client.send.assert_called_once_with({
-            "message": "config_set",
-            "logs": {"layers": {"PHY": {"level": "debug"}}},
-        })
+        mock_client.send.assert_called_once_with(
+            {
+                "message": "config_set",
+                "logs": {"layers": {"PHY": {"level": "debug"}}},
+            }
+        )
 
     def test_sends_log_set_with_kwargs(self, mock_client, enb):
-        enb.log_set(max_size=10)
-        mock_client.send.assert_called_once_with({
-            "message": "config_set",
-            "logs": {"max_size": 10},
-        })
-
-
-class TestVersion:
-    def test_sends_version(self, mock_client, enb):
-        enb.version()
-        mock_client.send.assert_called_once_with({"message": "version"})
+        enb.log_set(max_size=1000)
+        mock_client.send.assert_called_once_with(
+            {
+                "message": "config_set",
+                "logs": {"max_size": 1000},
+            }
+        )
 
 
 class TestHelp:

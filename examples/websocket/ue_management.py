@@ -11,7 +11,7 @@ Demonstrates:
 import argparse
 from pprint import pprint
 
-from client.websocket import Callbox, AmariError, CommandError
+from client.websocket import AmariError, Callbox, CommandError
 
 
 def parse_args():
@@ -20,7 +20,8 @@ def parse_args():
     parser.add_argument("--password", default=None, help="Authentication password")
     parser.add_argument("--ssl", action="store_true", help="Use WSS (TLS)")
     parser.add_argument(
-        "--ssl-verify", action="store_true",
+        "--ssl-verify",
+        action="store_true",
         help="Verify TLS certificates (default: no verification)",
     )
     return parser.parse_args()
@@ -30,8 +31,9 @@ def main():
     args = parse_args()
 
     try:
-        with Callbox(args.host, password=args.password, ssl=args.ssl,
-                     ssl_verify=args.ssl_verify) as cb:
+        with Callbox(
+            args.host, password=args.password, ssl=args.ssl, ssl_verify=args.ssl_verify
+        ) as cb:
             # --- UEs from eNB perspective ---
             print("=" * 60)
             print("eNB — Connected UEs")
@@ -53,38 +55,24 @@ def main():
             erabs = cb.enb.erab_get()
             pprint(erabs)
 
-            # --- Sessions from MME ---
-            print("\n" + "=" * 60)
-            print("MME — PDN/PDU Sessions")
-            print("=" * 60)
-            sessions = cb.mme.session_get()
-            pprint(sessions)
-
-            # --- Bearers from MME ---
-            print("\n" + "=" * 60)
-            print("MME — Bearer Information")
-            print("=" * 60)
-            bearers = cb.mme.bearer_get()
-            pprint(bearers)
-
-            # --- Connected eNBs/gNBs ---
+            # --- Connected eNBs/gNBs (replaces session_get/bearer_get/enb_get/gnb_get) ---
             print("\n" + "=" * 60)
             print("MME — Connected eNBs")
             print("=" * 60)
             try:
-                enbs = cb.mme.enb_get()
+                enbs = cb.mme.enb_status()
                 pprint(enbs)
             except CommandError as e:
-                print(f"enb_get error: {e}")
+                print(f"enb_status error: {e}")
 
             print("\n" + "=" * 60)
             print("MME — Connected gNBs")
             print("=" * 60)
             try:
-                gnbs = cb.mme.gnb_get()
+                gnbs = cb.mme.gnb_status()
                 pprint(gnbs)
             except CommandError as e:
-                print(f"gnb_get error: {e}")
+                print(f"gnb_status error: {e}")
 
             # --- RRC connection release ---
             # Only release if a UE is connected (use with caution)

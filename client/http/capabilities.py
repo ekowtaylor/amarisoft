@@ -155,26 +155,13 @@ class DeviceCapabilities:
         """
         caps = cls()
 
-        # Get version info
-        try:
-            version_info = callbox.enb.version()
-            caps.version = version_info.get("version", "")
-            caps.hardware_type = version_info.get("hardware", "")
-        except Exception as e:
-            logger.warning(f"Failed to get version info: {e}")
-
-        # Get license info
-        try:
-            license_info = callbox.enb.license()
-            caps.license_limits = cls._parse_license(license_info)
-        except Exception as e:
-            logger.warning(f"Failed to get license info: {e}")
-
-        # Get config to determine supported bands/features
+        # Get config to determine supported bands/features and version info
         try:
             config = callbox.enb.config_get()
             caps.bands = cls._parse_bands(config)
             caps.supported_technologies = cls._parse_technologies(config)
+            # Try to get version from config if available
+            caps.version = config.get("version", config.get("software_version", ""))
         except Exception as e:
             logger.warning(f"Failed to get config: {e}")
 
@@ -222,12 +209,14 @@ class DeviceCapabilities:
                 tech = "nr" if cell.get("rat") == "nr" else "lte"
                 duplex = cell.get("tdd_config", {}) and "tdd" or "fdd"
 
-                bands.append(BandInfo(
-                    band=band_num,
-                    technology=tech,
-                    duplex_mode=duplex,
-                    supported_bandwidths=cell.get("supported_bandwidths", []),
-                ))
+                bands.append(
+                    BandInfo(
+                        band=band_num,
+                        technology=tech,
+                        duplex_mode=duplex,
+                        supported_bandwidths=cell.get("supported_bandwidths", []),
+                    )
+                )
 
         return bands
 
@@ -309,19 +298,23 @@ class CapabilityChecker:
         rf = self.capabilities.rf_limits
 
         if gain < rf.min_tx_gain:
-            errors.append(ValidationError(
-                field="gain",
-                message=f"Gain {gain} dB is below minimum {rf.min_tx_gain} dB",
-                value=gain,
-                constraint=rf.min_tx_gain,
-            ))
+            errors.append(
+                ValidationError(
+                    field="gain",
+                    message=f"Gain {gain} dB is below minimum {rf.min_tx_gain} dB",
+                    value=gain,
+                    constraint=rf.min_tx_gain,
+                )
+            )
         if gain > rf.max_tx_gain:
-            errors.append(ValidationError(
-                field="gain",
-                message=f"Gain {gain} dB is above maximum {rf.max_tx_gain} dB",
-                value=gain,
-                constraint=rf.max_tx_gain,
-            ))
+            errors.append(
+                ValidationError(
+                    field="gain",
+                    message=f"Gain {gain} dB is above maximum {rf.max_tx_gain} dB",
+                    value=gain,
+                    constraint=rf.max_tx_gain,
+                )
+            )
 
         return errors
 
@@ -337,20 +330,24 @@ class CapabilityChecker:
         errors = []
 
         if cell_id < 0:
-            errors.append(ValidationError(
-                field="cell_id",
-                message=f"Cell ID {cell_id} must be non-negative",
-                value=cell_id,
-            ))
+            errors.append(
+                ValidationError(
+                    field="cell_id",
+                    message=f"Cell ID {cell_id} must be non-negative",
+                    value=cell_id,
+                )
+            )
 
         max_cells = self.capabilities.max_cells
         if cell_id >= max_cells:
-            errors.append(ValidationError(
-                field="cell_id",
-                message=f"Cell ID {cell_id} exceeds maximum {max_cells - 1}",
-                value=cell_id,
-                constraint=max_cells,
-            ))
+            errors.append(
+                ValidationError(
+                    field="cell_id",
+                    message=f"Cell ID {cell_id} exceeds maximum {max_cells - 1}",
+                    value=cell_id,
+                    constraint=max_cells,
+                )
+            )
 
         return errors
 
@@ -366,12 +363,14 @@ class CapabilityChecker:
         errors = []
 
         if not self.capabilities.supports_band(band):
-            errors.append(ValidationError(
-                field="band",
-                message=f"Band {band} is not supported. Supported: {self.capabilities.band_numbers}",
-                value=band,
-                constraint=self.capabilities.band_numbers,
-            ))
+            errors.append(
+                ValidationError(
+                    field="band",
+                    message=f"Band {band} is not supported. Supported: {self.capabilities.band_numbers}",
+                    value=band,
+                    constraint=self.capabilities.band_numbers,
+                )
+            )
 
         return errors
 
@@ -404,12 +403,14 @@ class CapabilityChecker:
             if bandwidth is not None:
                 band_info = self.capabilities.get_band_info(band)
                 if band_info and not band_info.supports_bandwidth(bandwidth):
-                    errors.append(ValidationError(
-                        field="bandwidth",
-                        message=f"Bandwidth {bandwidth} MHz not supported for band {band}",
-                        value=bandwidth,
-                        constraint=band_info.supported_bandwidths,
-                    ))
+                    errors.append(
+                        ValidationError(
+                            field="bandwidth",
+                            message=f"Bandwidth {bandwidth} MHz not supported for band {band}",
+                            value=bandwidth,
+                            constraint=band_info.supported_bandwidths,
+                        )
+                    )
 
         if gain is not None:
             errors.extend(self.validate_gain(gain))
@@ -429,12 +430,14 @@ class CapabilityChecker:
 
         max_ues = self.capabilities.max_ues
         if ue_count > max_ues:
-            errors.append(ValidationError(
-                field="ue_count",
-                message=f"UE count {ue_count} exceeds license limit {max_ues}",
-                value=ue_count,
-                constraint=max_ues,
-            ))
+            errors.append(
+                ValidationError(
+                    field="ue_count",
+                    message=f"UE count {ue_count} exceeds license limit {max_ues}",
+                    value=ue_count,
+                    constraint=max_ues,
+                )
+            )
 
         return errors
 

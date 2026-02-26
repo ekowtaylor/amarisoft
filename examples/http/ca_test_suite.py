@@ -24,28 +24,31 @@ Usage:
 import argparse
 import json
 import time
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import Any
 
-from client.http import Callbox, APIError
+from client.http import APIError, Callbox
 
 
 # ══════════════════════════════════════════════════════════════
 # CA CONFIGURATION TYPES
 # ══════════════════════════════════════════════════════════════
 
+
 class CAType(Enum):
     """Carrier Aggregation type."""
-    LTE_CA = "lte_ca"      # LTE Carrier Aggregation
-    NR_CA = "nr_ca"        # NR Carrier Aggregation
-    ENDC = "endc"          # EN-DC (LTE + NR)
-    NRDC = "nrdc"          # NR-DC
+
+    LTE_CA = "lte_ca"  # LTE Carrier Aggregation
+    NR_CA = "nr_ca"  # NR Carrier Aggregation
+    ENDC = "endc"  # EN-DC (LTE + NR)
+    NRDC = "nrdc"  # NR-DC
 
 
 @dataclass
 class CAConfig:
     """CA test configuration."""
+
     name: str
     ca_type: CAType
     description: str
@@ -118,9 +121,11 @@ CA_CONFIGS = {
 # CA TEST RESULT
 # ══════════════════════════════════════════════════════════════
 
+
 @dataclass
 class CATestResult:
     """Result of a CA test."""
+
     config_name: str
     ca_type: str
     primary_band: str
@@ -149,6 +154,7 @@ class CATestResult:
 # ══════════════════════════════════════════════════════════════
 # CA TEST SUITE
 # ══════════════════════════════════════════════════════════════
+
 
 class CATestSuite:
     """Carrier Aggregation test suite for HTTP REST API."""
@@ -186,18 +192,22 @@ class CATestSuite:
 
         cells = []
         try:
-            cell_list = self.cb.enb.cell_list()
-            for cell in cell_list.get("cell_list", []):
-                cells.append({
-                    "cell_id": cell.get("cell_id"),
-                    "state": cell.get("state"),
-                    "band": cell.get("band"),
-                    "dl_earfcn": cell.get("dl_earfcn"),
-                    "bandwidth": cell.get("bandwidth"),
-                    "rat": cell.get("rat", "LTE"),
-                })
+            # cell_list() not supported - use config_get()
+            config = self.cb.enb.config_get()
+            cell_list = config.get("cell_list", config.get("cells", []))
+            for cell in cell_list if isinstance(cell_list, list) else []:
+                cells.append(
+                    {
+                        "cell_id": cell.get("cell_id"),
+                        "state": cell.get("state", "configured"),
+                        "band": cell.get("band", cell.get("dl_earfcn_band")),
+                        "dl_earfcn": cell.get("dl_earfcn"),
+                        "bandwidth": cell.get("bandwidth"),
+                        "rat": cell.get("rat", "LTE"),
+                    }
+                )
         except APIError as e:
-            print(f"  Warning: Could not get cell list: {e}")
+            print(f"  Warning: Could not get cell config: {e}")
 
         return cells
 
@@ -223,11 +233,13 @@ class CATestSuite:
                     total_dl += cell.get("dl_bitrate", 0)
                     total_ul += cell.get("ul_bitrate", 0)
 
-                samples.append({
-                    "timestamp": time.monotonic() - start,
-                    "dl_bitrate": total_dl,
-                    "ul_bitrate": total_ul,
-                })
+                samples.append(
+                    {
+                        "timestamp": time.monotonic() - start,
+                        "dl_bitrate": total_dl,
+                        "ul_bitrate": total_ul,
+                    }
+                )
 
             except APIError:
                 pass
@@ -281,8 +293,16 @@ class CATestSuite:
             dl_avg = dl_max = ul_avg = ul_max = 0.0
 
         # Calculate efficiency
-        dl_eff = (dl_avg / config.expected_dl_mbps * 100) if config.expected_dl_mbps > 0 else 0
-        ul_eff = (ul_avg / config.expected_ul_mbps * 100) if config.expected_ul_mbps > 0 else 0
+        dl_eff = (
+            (dl_avg / config.expected_dl_mbps * 100)
+            if config.expected_dl_mbps > 0
+            else 0
+        )
+        ul_eff = (
+            (ul_avg / config.expected_ul_mbps * 100)
+            if config.expected_ul_mbps > 0
+            else 0
+        )
 
         # Determine pass/fail (70% threshold or no traffic)
         passed = (dl_eff >= 70 or ul_eff >= 70) or (dl_avg == 0 and ul_avg == 0)
@@ -309,10 +329,14 @@ class CATestSuite:
 
         # Print result
         print(f"\n  Results:")
-        print(f"    DL: avg={dl_avg:.2f} Mbps, max={dl_max:.2f} Mbps "
-              f"({dl_eff:.1f}% efficiency)")
-        print(f"    UL: avg={ul_avg:.2f} Mbps, max={ul_max:.2f} Mbps "
-              f"({ul_eff:.1f}% efficiency)")
+        print(
+            f"    DL: avg={dl_avg:.2f} Mbps, max={dl_max:.2f} Mbps "
+            f"({dl_eff:.1f}% efficiency)"
+        )
+        print(
+            f"    UL: avg={ul_avg:.2f} Mbps, max={ul_max:.2f} Mbps "
+            f"({ul_eff:.1f}% efficiency)"
+        )
         print(f"\n  Status: {'✓ PASS' if passed else '✗ FAIL'}")
 
         return result
@@ -363,8 +387,10 @@ class CATestSuite:
         print("CA TEST SUMMARY")
         print("═" * 80)
 
-        print(f"\n{'Config':<30} {'Type':<10} {'DL Mbps':>10} {'UL Mbps':>10} "
-              f"{'Cells':>6} {'Status':<8}")
+        print(
+            f"\n{'Config':<30} {'Type':<10} {'DL Mbps':>10} {'UL Mbps':>10} "
+            f"{'Cells':>6} {'Status':<8}"
+        )
         print("-" * 80)
 
         passed = failed = 0
@@ -375,8 +401,10 @@ class CATestSuite:
             else:
                 failed += 1
 
-            print(f"{r.config_name:<30} {r.ca_type:<10} {r.dl_avg_mbps:>10.2f} "
-                  f"{r.ul_avg_mbps:>10.2f} {r.active_cells:>6} {status:<8}")
+            print(
+                f"{r.config_name:<30} {r.ca_type:<10} {r.dl_avg_mbps:>10.2f} "
+                f"{r.ul_avg_mbps:>10.2f} {r.active_cells:>6} {status:<8}"
+            )
 
         print("-" * 80)
         print(f"\nTotal: {len(self.results)} tests, {passed} passed, {failed} failed")
@@ -405,6 +433,7 @@ class CATestSuite:
 # MAIN
 # ══════════════════════════════════════════════════════════════
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="CA test suite for Amarisoft REST API",
@@ -424,28 +453,36 @@ Examples:
         """,
     )
     parser.add_argument(
-        "--url", default="http://127.0.0.1:9010",
+        "--url",
+        default="http://127.0.0.1:9010",
         help="REST API service URL",
     )
     parser.add_argument("--timeout", type=float, default=10.0, help="Request timeout")
     parser.add_argument(
-        "--config", nargs="+", default=None,
+        "--config",
+        nargs="+",
+        default=None,
         help="Specific configs to test",
     )
     parser.add_argument(
-        "--all", action="store_true",
+        "--all",
+        action="store_true",
         help="Run all CA configurations",
     )
     parser.add_argument(
-        "--duration", type=float, default=30.0,
+        "--duration",
+        type=float,
+        default=30.0,
         help="Test duration per config (default: 30s)",
     )
     parser.add_argument(
-        "--output", default=None,
+        "--output",
+        default=None,
         help="Export results to JSON file",
     )
     parser.add_argument(
-        "--list-configs", action="store_true",
+        "--list-configs",
+        action="store_true",
         help="List available configs and exit",
     )
     return parser.parse_args()
@@ -455,14 +492,18 @@ def list_configs():
     """Print available CA configurations."""
     print("\nAvailable CA Configurations:")
     print("=" * 80)
-    print(f"{'Name':<25} {'Type':<10} {'Primary':<8} {'Secondary':<20} "
-          f"{'Expected DL':>12}")
+    print(
+        f"{'Name':<25} {'Type':<10} {'Primary':<8} {'Secondary':<20} "
+        f"{'Expected DL':>12}"
+    )
     print("-" * 80)
 
     for name, config in CA_CONFIGS.items():
         secondary = ",".join(config.secondary_bands)
-        print(f"{name:<25} {config.ca_type.value:<10} {config.primary_band:<8} "
-              f"{secondary:<20} {config.expected_dl_mbps:>10.0f} Mbps")
+        print(
+            f"{name:<25} {config.ca_type.value:<10} {config.primary_band:<8} "
+            f"{secondary:<20} {config.expected_dl_mbps:>10.0f} Mbps"
+        )
 
     print("-" * 80)
     print(f"\nTotal: {len(CA_CONFIGS)} configurations")

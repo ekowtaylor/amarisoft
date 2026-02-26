@@ -10,7 +10,7 @@ Demonstrates:
 import argparse
 from pprint import pprint
 
-from client.http import Callbox, APIError
+from client.http import APIError, Callbox
 
 
 def parse_args():
@@ -25,12 +25,22 @@ def main():
 
     try:
         with Callbox(args.url, api_key=args.api_key) as cb:
-            # --- IMS license info ---
+            # --- IMS info (license may not be supported on all versions) ---
             print("=" * 60)
-            print("IMS — License Information")
+            print("IMS — Service Information")
             print("=" * 60)
-            lic = cb.ims.license()
-            pprint(lic)
+            try:
+                lic = cb.ims.license()
+                pprint(lic)
+            except APIError as e:
+                print(f"IMS license() not available: {e}")
+                try:
+                    help_info = cb.ims.help()
+                    print(
+                        f"IMS available commands: {len(help_info.get('messages', []))}"
+                    )
+                except APIError:
+                    print("IMS service unavailable")
 
             # --- IMS users ---
             print("\n" + "=" * 60)
@@ -62,7 +72,9 @@ def main():
                     print(f"IMS — Send SMS to {impu}")
                     print("=" * 60)
                     try:
-                        sms_result = cb.ims.send_sms(impu=impu, text="Hello from HTTP API!")
+                        sms_result = cb.ims.send_sms(
+                            impu=impu, text="Hello from HTTP API!"
+                        )
                         pprint(sms_result)
                     except APIError as e:
                         print(f"send_sms error: {e}")

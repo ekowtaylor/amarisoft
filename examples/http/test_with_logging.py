@@ -34,21 +34,13 @@ import argparse
 import logging
 import time
 
-from client.http import (
-    Callbox,
-    HTTPClientError,
-    ConnectionError,
-)
-from client.http.logging import (
-    TestSession,
-    LogCollector,
-    enable_file_logging,
-)
+from client.http import Callbox, ConnectionError, HTTPClientError
 from client.http.capabilities import (
-    DeviceCapabilities,
     CapabilityChecker,
+    DeviceCapabilities,
     ValidationContext,
 )
+from client.http.logging import enable_file_logging, LogCollector, TestSession
 
 
 def parse_args():
@@ -154,14 +146,15 @@ def run_test_session(args):
                         raise RuntimeError(f"Service unhealthy: {status}")
                     print("  ✓ Service is healthy")
 
-                # --- Step 2: Version Info ---
-                with session.add_step("Get Version Info"):
-                    print("\nGetting version information...")
+                # --- Step 2: Service Info ---
+                with session.add_step("Get Service Info"):
+                    print("\nGetting service information...")
                     try:
-                        version = cb.enb.version()
-                        print(f"  eNB Version: {version.get('version', 'N/A')}")
+                        help_info = cb.enb.help()
+                        cmds = help_info.get("commands", help_info.get("messages", []))
+                        print(f"  eNB available commands: {len(cmds)}")
                     except Exception as e:
-                        print(f"  Could not get eNB version: {e}")
+                        print(f"  Could not get eNB help: {e}")
 
                 # --- Step 3: Discover Capabilities ---
                 with session.add_step("Discover Capabilities"):
@@ -217,8 +210,10 @@ def run_test_session(args):
                         for cell in cells[:3]:
                             dl = cell.get("dl_bitrate", 0) / 1e6
                             ul = cell.get("ul_bitrate", 0) / 1e6
-                            print(f"    Cell {cell.get('cell_id', '?')}: "
-                                  f"DL={dl:.1f}Mbps, UL={ul:.1f}Mbps")
+                            print(
+                                f"    Cell {cell.get('cell_id', '?')}: "
+                                f"DL={dl:.1f}Mbps, UL={ul:.1f}Mbps"
+                            )
                     except Exception as e:
                         print(f"  Could not get stats: {e}")
 
@@ -233,8 +228,10 @@ def run_test_session(args):
                             for cell in cells[:2]:
                                 dl = cell.get("dl_bitrate", 0) / 1e6
                                 ul = cell.get("ul_bitrate", 0) / 1e6
-                                print(f"  [{i+1}s] Cell {cell.get('cell_id', '?')}: "
-                                      f"DL={dl:.1f}Mbps, UL={ul:.1f}Mbps")
+                                print(
+                                    f"  [{i+1}s] Cell {cell.get('cell_id', '?')}: "
+                                    f"DL={dl:.1f}Mbps, UL={ul:.1f}Mbps"
+                                )
                         except Exception as e:
                             print(f"  [{i+1}s] Error: {e}")
                         time.sleep(1)
@@ -254,7 +251,11 @@ def run_test_session(args):
                 if errors:
                     print("\n  Recent errors:")
                     for err in errors[-5:]:
-                        msg = err.message[:60] + "..." if len(err.message) > 60 else err.message
+                        msg = (
+                            err.message[:60] + "..."
+                            if len(err.message) > 60
+                            else err.message
+                        )
                         print(f"    [{err.service}] {msg}")
 
             # Session ended - diagnostics exported automatically
@@ -288,7 +289,9 @@ def example_custom_log_collection(args):
         print("\nStarting continuous collection (3 seconds)...")
 
         def on_log(entry):
-            msg = entry.message[:50] + "..." if len(entry.message) > 50 else entry.message
+            msg = (
+                entry.message[:50] + "..." if len(entry.message) > 50 else entry.message
+            )
             print(f"  [{entry.service}:{entry.layer}] {msg}")
 
         collector.start_continuous(interval=0.5, callback=on_log)

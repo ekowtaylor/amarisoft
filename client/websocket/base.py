@@ -120,10 +120,6 @@ class ServiceApi:
     # System Information
     # ──────────────────────────────────────────────
 
-    def version(self) -> dict[str, Any]:
-        """Retrieve the software version of the service."""
-        return self._client.send({"message": "version"})
-
     def help(self) -> dict[str, Any]:
         """List all available Remote API messages and events."""
         return self._client.send({"message": "help"})

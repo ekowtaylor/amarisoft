@@ -20,11 +20,11 @@ import argparse
 from pprint import pprint
 
 from client.http import (
-    Callbox,
-    HTTPClientError,
-    ConnectionError,
-    TimeoutError,
     APIError,
+    Callbox,
+    ConnectionError,
+    HTTPClientError,
+    TimeoutError,
 )
 
 
@@ -58,7 +58,9 @@ def example_health_check(cb: Callbox):
     print(f"API Version: {health.get('version', 'unknown')}")
 
     callbox_info = health.get("callbox", {})
-    print(f"Connected Services: {callbox_info.get('connected_services', 0)}/{callbox_info.get('total_services', 0)}")
+    print(
+        f"Connected Services: {callbox_info.get('connected_services', 0)}/{callbox_info.get('total_services', 0)}"
+    )
 
     services = callbox_info.get("services", {})
     for name, info in services.items():
@@ -67,9 +69,9 @@ def example_health_check(cb: Callbox):
 
 
 def example_version_info(cb: Callbox):
-    """Get version information from each service."""
+    """Get information from each service using help()."""
     print("\n" + "=" * 60)
-    print("Example 2: Service Version Information")
+    print("Example 2: Service Information")
     print("=" * 60)
 
     services = [
@@ -81,10 +83,10 @@ def example_version_info(cb: Callbox):
 
     for name, api in services:
         try:
-            version = api.version()
+            help_info = api.help()
+            messages = help_info.get("messages", [])
             print(f"\n{name}:")
-            print(f"  Version: {version.get('version', 'N/A')}")
-            print(f"  Build: {version.get('build', 'N/A')}")
+            print(f"  Available commands: {len(messages)}")
         except APIError as e:
             print(f"\n{name}: Not available ({e})")
         except Exception as e:

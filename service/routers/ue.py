@@ -8,9 +8,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from fastapi import APIRouter, Depends, Query
-
 from client.websocket.exceptions import AmariError
+from fastapi import APIRouter, Depends, Query
 
 from ..exceptions import map_amarisoft_exception
 from ..manager import CallboxManager, get_manager
@@ -22,21 +21,6 @@ router = APIRouter(prefix="/ue", tags=["UE Simulator"])
 # ──────────────────────────────────────────────
 # System Information
 # ──────────────────────────────────────────────
-
-
-@router.get(
-    "/version",
-    summary="Get UE Simulator version",
-    description="Get the software version of the UE Simulator service.",
-)
-async def get_version(
-    manager: CallboxManager = Depends(get_manager),
-) -> dict[str, Any]:
-    """Get UE Simulator version information."""
-    try:
-        return manager.ue.version()
-    except AmariError as e:
-        raise map_amarisoft_exception(e, "UE") from e
 
 
 @router.get(
