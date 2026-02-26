@@ -128,9 +128,29 @@ class HTTPOverSSHClient:
         return f"http://localhost:{self.local_port}"
 
     def _is_port_in_use(self, port: int) -> bool:
-        """Check if a port is in use."""
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            return s.connect_ex(("localhost", port)) == 0
+        """Check if a port is in use (supports both IPv4 and IPv6).
+
+        Attempts to connect to the port on localhost using both IPv4 and IPv6.
+        Returns True if either connection succeeds.
+
+        Args:
+            port: Port number to check.
+
+        Returns:
+            True if port is in use, False otherwise.
+        """
+        # Try both IPv4 and IPv6 localhost addresses
+        for host in ("127.0.0.1", "::1"):
+            try:
+                family = socket.AF_INET if host == "127.0.0.1" else socket.AF_INET6
+                with socket.socket(family, socket.SOCK_STREAM) as s:
+                    s.settimeout(1.0)
+                    if s.connect_ex((host, port)) == 0:
+                        return True
+            except OSError:
+                # IPv6 may not be available on all systems
+                continue
+        return False
 
     def _cleanup_port(self, port: int) -> bool:
         """Kill any process using the specified port."""

@@ -224,9 +224,15 @@ class TestHTTPOverSSHClientIsListening:
 class TestHTTPOverSSHClientRequests:
     """Tests for HTTP request methods."""
 
+    @patch("client.http_ssh.client.socket.socket")
     @patch("client.http_ssh.client.requests.Session")
-    def test_get_request(self, mock_session_class):
+    def test_get_request(self, mock_session_class, mock_socket):
         """Test GET request through tunnel."""
+        # Mock port check to return True (port in use = connected)
+        mock_sock_instance = MagicMock()
+        mock_sock_instance.connect_ex.return_value = 0
+        mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
         mock_session = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -246,9 +252,14 @@ class TestHTTPOverSSHClientRequests:
 
         assert result == {"status": "ok"}
 
+    @patch("client.http_ssh.client.socket.socket")
     @patch("client.http_ssh.client.requests.Session")
-    def test_post_request(self, mock_session_class):
+    def test_post_request(self, mock_session_class, mock_socket):
         """Test POST request through tunnel."""
+        mock_sock_instance = MagicMock()
+        mock_sock_instance.connect_ex.return_value = 0
+        mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
         mock_session = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -277,9 +288,14 @@ class TestHTTPOverSSHClientRequests:
         with pytest.raises(SSHConnectionError, match="not connected"):
             client.get("/health")
 
+    @patch("client.http_ssh.client.socket.socket")
     @patch("client.http_ssh.client.requests.Session")
-    def test_api_error_response(self, mock_session_class):
+    def test_api_error_response(self, mock_session_class, mock_socket):
         """Test API error response handling."""
+        mock_sock_instance = MagicMock()
+        mock_sock_instance.connect_ex.return_value = 0
+        mock_socket.return_value.__enter__.return_value = mock_sock_instance
+
         mock_session = MagicMock()
         mock_response = MagicMock()
         mock_response.status_code = 404
