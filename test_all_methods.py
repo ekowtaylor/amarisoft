@@ -1,229 +1,229 @@
 #!/usr/bin/env python3
-"""Test all WebSocket methods against the live Amarisoft callbox."""
+"""Test all REST API methods against the live Amarisoft callbox via HTTP over SSH.
 
+This script tests the HTTP REST API endpoints through an SSH tunnel.
+
+Usage:
+    python test_all_methods.py [--verbose]
+
+Requirements:
+    - sshpass must be installed for password authentication
+    - Network access to the Amarisoft callbox
+"""
+
+from __future__ import annotations
+
+import argparse
 import json
 import sys
 from typing import Any
 
-# Add the project to path
-sys.path.insert(0, "/Users/ekowtaylor/Documents/Personal/Github/amarisoft")
+sys.path.insert(0, ".")
 
-from client.websocket import AmariError, Callbox, CommandError
+from client.http_ssh import HTTPOverSSHClient, SSHConnectionError
+
+# Configuration
+SSH_HOST = "2620:10d:c052:12a:aaa1:59ff:fe88:d39"
+SSH_USERNAME = "root"
+SSH_PASSWORD = "toor"
+REMOTE_API_PORT = 9010
 
 
-def test_method(name: str, func, *args, **kwargs) -> tuple[bool, Any]:
-    """Test a single method and return success/failure with result."""
+def test_endpoint(
+    client: HTTPOverSSHClient,
+    method: str,
+    endpoint: str,
+    params: dict | None = None,
+) -> tuple[bool, Any]:
+    """Test a single endpoint and return success/failure with result."""
     try:
-        result = func(*args, **kwargs)
+        if method == "GET":
+            result = client.get(endpoint, params=params)
+        elif method == "POST":
+            result = client.post(endpoint, data=params)
+        else:
+            return False, f"Unsupported method: {method}"
         return True, result
-    except CommandError as e:
-        return False, f"CommandError: {e}"
-    except AmariError as e:
-        return False, f"AmariError: {e}"
     except Exception as e:
-        return False, f"Exception: {type(e).__name__}: {e}"
+        return False, f"{type(e).__name__}: {e}"
 
 
-def print_result(name: str, success: bool, result: Any, verbose: bool = False):
+def print_result(name: str, success: bool, result: Any, verbose: bool = False) -> None:
     """Print test result."""
     status = "✓" if success else "✗"
     if success:
-        if verbose:
-            print(f"  {status} {name}: {json.dumps(result, default=str)[:100]}...")
+        if verbose and isinstance(result, dict):
+            preview = json.dumps(result, default=str)[:80]
+            print(f"  {status} {name}: {preview}...")
         else:
             print(f"  {status} {name}")
     else:
-        print(f"  {status} {name}: {result}")
+        # Truncate error message if too long
+        error_msg = str(result)[:100]
+        print(f"  {status} {name}: {error_msg}")
 
 
-def test_enb_methods(cb: Callbox, verbose: bool = False) -> dict[str, bool]:
-    """Test all ENB methods."""
+def test_general_endpoints(
+    client: HTTPOverSSHClient, verbose: bool = False
+) -> dict[str, bool]:
+    """Test general REST API endpoints."""
     print("\n" + "=" * 60)
-    print("TESTING ENB METHODS")
+    print("TESTING GENERAL ENDPOINTS")
     print("=" * 60)
 
     results = {}
-
-    # Base methods (inherited)
     tests = [
-        ("help", lambda: cb.enb.help()),
-        ("config_get", lambda: cb.enb.config_get()),
-        ("stats", lambda: cb.enb.stats()),
-        ("stats(rf=True)", lambda: cb.enb.stats(rf=True)),
-        ("stats(samples=True)", lambda: cb.enb.stats(samples=True)),
-        ("ue_get", lambda: cb.enb.ue_get()),
-        ("log_get", lambda: cb.enb.log_get()),
-        ("erab_get", lambda: cb.enb.erab_get()),
-        ("qos_flow_get", lambda: cb.enb.qos_flow_get()),
-        ("rf", lambda: cb.enb.rf()),
-        ("s1_status", lambda: cb.enb.s1_status()),
-        ("ng_status", lambda: cb.enb.ng_status()),
-        ("x2_status", lambda: cb.enb.x2_status()),
-        ("xn_status", lambda: cb.enb.xn_status()),
-        ("m2_status", lambda: cb.enb.m2_status()),
-        ("echo", lambda: cb.enb.echo({"test": "data"})),
+        ("GET /health", "GET", "/health", None),
+        ("GET /services", "GET", "/services", None),
+        ("GET /version", "GET", "/version", None),
+        ("POST /services/connect", "POST", "/services/connect", None),
     ]
 
-    for name, func in tests:
-        success, result = test_method(name, func)
+    for name, method, endpoint, params in tests:
+        success, result = test_endpoint(client, method, endpoint, params)
         results[name] = success
         print_result(name, success, result, verbose)
 
     return results
 
 
-def test_mme_methods(cb: Callbox, verbose: bool = False) -> dict[str, bool]:
-    """Test all MME methods."""
+def test_enb_endpoints(
+    client: HTTPOverSSHClient, verbose: bool = False
+) -> dict[str, bool]:
+    """Test eNB REST API endpoints."""
     print("\n" + "=" * 60)
-    print("TESTING MME METHODS")
+    print("TESTING ENB ENDPOINTS")
     print("=" * 60)
 
     results = {}
-
     tests = [
-        ("help", lambda: cb.mme.help()),
-        ("config_get", lambda: cb.mme.config_get()),
-        ("stats", lambda: cb.mme.stats()),
-        ("ue_get", lambda: cb.mme.ue_get()),
-        ("log_get", lambda: cb.mme.log_get()),
-        ("enb_status", lambda: cb.mme.enb_status()),
-        ("gnb_status", lambda: cb.mme.gnb_status()),
-        ("ng_ran_status", lambda: cb.mme.ng_ran_status()),
-        ("s6_status", lambda: cb.mme.s6_status()),
-        ("s13_status", lambda: cb.mme.s13_status()),
-        ("sgs_status", lambda: cb.mme.sgs_status()),
-        ("n8_status", lambda: cb.mme.n8_status()),
-        ("n12_status", lambda: cb.mme.n12_status()),
-        ("n13_status", lambda: cb.mme.n13_status()),
-        ("n17_status", lambda: cb.mme.n17_status()),
-        ("sbc_status", lambda: cb.mme.sbc_status()),
-        ("echo", lambda: cb.mme.echo({"test": "data"})),
+        # Base endpoints
+        ("GET /enb/help", "GET", "/enb/help", None),
+        ("GET /enb/config", "GET", "/enb/config", None),
+        ("GET /enb/stats", "GET", "/enb/stats", None),
+        ("GET /enb/stats?rf=true", "GET", "/enb/stats", {"rf": "true"}),
+        ("GET /enb/ue", "GET", "/enb/ue", None),
+        ("GET /enb/cells", "GET", "/enb/cells", None),
+        ("GET /enb/logs", "GET", "/enb/logs", None),
+        # New endpoints
+        ("GET /enb/erab", "GET", "/enb/erab", None),
+        ("GET /enb/qos-flow", "GET", "/enb/qos-flow", None),
+        ("GET /enb/rf", "GET", "/enb/rf", None),
+        ("GET /enb/rf/gain", "GET", "/enb/rf/gain", None),
+        ("GET /enb/rf/power", "GET", "/enb/rf/power", None),
+        ("GET /enb/snr", "GET", "/enb/snr", None),
+        ("GET /enb/noise-level", "GET", "/enb/noise-level", None),
+        ("GET /enb/trx", "GET", "/enb/trx", None),
+        ("GET /enb/kpi", "GET", "/enb/kpi", None),
+        # Interface endpoints
+        ("GET /enb/interface/s1", "GET", "/enb/interface/s1", None),
+        ("GET /enb/interface/ng", "GET", "/enb/interface/ng", None),
+        ("GET /enb/interface/x2", "GET", "/enb/interface/x2", None),
+        ("GET /enb/interface/xn", "GET", "/enb/interface/xn", None),
+        ("GET /enb/interface/m2", "GET", "/enb/interface/m2", None),
     ]
 
-    for name, func in tests:
-        success, result = test_method(name, func)
+    for name, method, endpoint, params in tests:
+        success, result = test_endpoint(client, method, endpoint, params)
         results[name] = success
         print_result(name, success, result, verbose)
 
     return results
 
 
-def test_ims_methods(cb: Callbox, verbose: bool = False) -> dict[str, bool]:
-    """Test IMS methods (if available)."""
+def test_mme_endpoints(
+    client: HTTPOverSSHClient, verbose: bool = False
+) -> dict[str, bool]:
+    """Test MME REST API endpoints."""
     print("\n" + "=" * 60)
-    print("TESTING IMS METHODS")
+    print("TESTING MME ENDPOINTS")
     print("=" * 60)
 
-    if not cb.status.get("ims"):
-        print("  IMS service not connected - skipping")
-        return {}
-
     results = {}
-
     tests = [
-        ("help", lambda: cb.ims.help()),
-        ("config_get", lambda: cb.ims.config_get()),
-        ("stats", lambda: cb.ims.stats()),
-        ("users_get", lambda: cb.ims.users_get()),
-        ("dialog_get", lambda: cb.ims.dialog_get()),
-        ("license", lambda: cb.ims.license()),
-        ("echo", lambda: cb.ims.echo({"test": "data"})),
+        # Base endpoints
+        ("GET /mme/help", "GET", "/mme/help", None),
+        ("GET /mme/config", "GET", "/mme/config", None),
+        ("GET /mme/stats", "GET", "/mme/stats", None),
+        ("GET /mme/ue", "GET", "/mme/ue", None),
+        ("GET /mme/logs", "GET", "/mme/logs", None),
+        ("GET /mme/apn", "GET", "/mme/apn", None),
+        # Status endpoints
+        ("GET /mme/enb", "GET", "/mme/enb", None),
+        ("GET /mme/gnb", "GET", "/mme/gnb", None),
+        ("GET /mme/ng-ran", "GET", "/mme/ng-ran", None),
+        # Interface endpoints
+        ("GET /mme/interface/s6", "GET", "/mme/interface/s6", None),
+        ("GET /mme/interface/s13", "GET", "/mme/interface/s13", None),
+        ("GET /mme/interface/sgs", "GET", "/mme/interface/sgs", None),
+        ("GET /mme/interface/n8", "GET", "/mme/interface/n8", None),
+        ("GET /mme/interface/n12", "GET", "/mme/interface/n12", None),
+        ("GET /mme/interface/n13", "GET", "/mme/interface/n13", None),
+        ("GET /mme/interface/n17", "GET", "/mme/interface/n17", None),
+        ("GET /mme/interface/sbc", "GET", "/mme/interface/sbc", None),
     ]
 
-    for name, func in tests:
-        success, result = test_method(name, func)
+    for name, method, endpoint, params in tests:
+        success, result = test_endpoint(client, method, endpoint, params)
         results[name] = success
         print_result(name, success, result, verbose)
 
     return results
 
 
-def test_ue_methods(cb: Callbox, verbose: bool = False) -> dict[str, bool]:
-    """Test UE simulator methods (if available)."""
-    print("\n" + "=" * 60)
-    print("TESTING UE SIMULATOR METHODS")
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Test all REST API methods via HTTP over SSH"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_true",
+        help="Show verbose output with response previews",
+    )
+    parser.add_argument(
+        "--host", default=SSH_HOST, help=f"SSH host (default: {SSH_HOST})"
+    )
+    parser.add_argument("--password", default=SSH_PASSWORD, help="SSH password")
+    args = parser.parse_args()
+
     print("=" * 60)
+    print("AMARISOFT REST API METHOD TEST")
+    print("=" * 60)
+    print(f"\nTarget: {SSH_USERNAME}@{args.host}")
+    print(f"API Port: {REMOTE_API_PORT}")
 
-    if not cb.status.get("ue"):
-        print("  UE simulator service not connected - skipping")
-        return {}
+    # Create client
+    client = HTTPOverSSHClient(
+        ssh_host=args.host,
+        ssh_username=SSH_USERNAME,
+        ssh_password=args.password,
+        remote_port=REMOTE_API_PORT,
+    )
 
-    results = {}
+    # Check SSH connectivity
+    print("\n[1] Checking SSH connectivity...")
+    if not client.is_listening():
+        print("    ✗ SSH service not reachable")
+        return 1
+    print("    ✓ SSH service reachable")
 
-    tests = [
-        ("help", lambda: cb.ue.help()),
-        ("config_get", lambda: cb.ue.config_get()),
-        ("stats", lambda: cb.ue.stats()),
-        ("ue_get", lambda: cb.ue.ue_get()),
-        ("log_get", lambda: cb.ue.log_get()),
-        ("echo", lambda: cb.ue.echo({"test": "data"})),
-    ]
-
-    for name, func in tests:
-        success, result = test_method(name, func)
-        results[name] = success
-        print_result(name, success, result, verbose)
-
-    return results
-
-
-def main():
-    # Amarisoft box connection details
-    # Try direct connection first - IPv6 needs square brackets
-    hosts = [
-        ("[2620:10d:c052:12a:aaa1:59ff:fe88:d39]", "IPv6 direct"),
-        ("192.168.1.80", "IPv4 default"),
-        ("127.0.0.1", "localhost"),
-    ]
-
-    cb = None
-    connected_host = None
-
-    for host, desc in hosts:
-        print(f"\nTrying to connect to {desc} ({host})...")
-        try:
-            cb = Callbox(host, password="toor")
-            cb.connect_all()
-            connected_host = host
-            print(f"✓ Connected to {desc}")
-            break
-        except Exception as e:
-            print(f"✗ Failed: {e}")
-            if cb:
-                try:
-                    cb.close()
-                except:
-                    pass
-                cb = None
-
-    if not cb:
-        print("\n✗ Could not connect to any Amarisoft host")
+    # Connect
+    print("\n[2] Establishing SSH tunnel...")
+    try:
+        client.connect()
+        print(f"    ✓ Tunnel established: localhost:{client.local_port}")
+    except SSHConnectionError as e:
+        print(f"    ✗ Failed: {e}")
         return 1
 
     try:
-        print("\n" + "=" * 60)
-        print("CONNECTION STATUS")
-        print("=" * 60)
-        print(f"  Host: {connected_host}")
-        print(f"  ENB: {'✓' if cb.status.get('enb') else '✗'}")
-        print(f"  MME: {'✓' if cb.status.get('mme') else '✗'}")
-        print(f"  IMS: {'✓' if cb.status.get('ims') else '✗'}")
-        print(f"  UE:  {'✓' if cb.status.get('ue') else '✗'}")
+        # Run all tests
+        all_results: dict[str, dict[str, bool]] = {}
 
-        # Run tests
-        all_results = {}
-
-        if cb.status.get("enb"):
-            all_results["enb"] = test_enb_methods(cb, verbose=True)
-
-        if cb.status.get("mme"):
-            all_results["mme"] = test_mme_methods(cb, verbose=True)
-
-        if cb.status.get("ims"):
-            all_results["ims"] = test_ims_methods(cb, verbose=True)
-
-        if cb.status.get("ue"):
-            all_results["ue"] = test_ue_methods(cb, verbose=True)
+        all_results["general"] = test_general_endpoints(client, args.verbose)
+        all_results["enb"] = test_enb_endpoints(client, args.verbose)
+        all_results["mme"] = test_mme_endpoints(client, args.verbose)
 
         # Summary
         print("\n" + "=" * 60)
@@ -233,19 +233,30 @@ def main():
         total_pass = 0
         total_fail = 0
 
-        for service, results in all_results.items():
+        for category, results in all_results.items():
             passed = sum(1 for v in results.values() if v)
             failed = sum(1 for v in results.values() if not v)
             total_pass += passed
             total_fail += failed
-            print(f"  {service.upper()}: {passed} passed, {failed} failed")
+            status = "✓" if failed == 0 else "⚠"
+            print(
+                f"  {status} {category.upper():10} {passed:2} passed, {failed:2} failed"
+            )
 
         print(f"\n  TOTAL: {total_pass} passed, {total_fail} failed")
+
+        # Calculate pass rate
+        total = total_pass + total_fail
+        if total > 0:
+            pass_rate = (total_pass / total) * 100
+            print(f"  Pass Rate: {pass_rate:.1f}%")
 
         return 0 if total_fail == 0 else 1
 
     finally:
-        cb.close()
+        print("\n[3] Closing tunnel...")
+        client.close()
+        print("    ✓ Done")
 
 
 if __name__ == "__main__":

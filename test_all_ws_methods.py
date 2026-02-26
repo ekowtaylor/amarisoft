@@ -180,7 +180,7 @@ def main():
     print("=" * 60)
 
     # Connect - use IPv6 with square brackets
-    host = "[2620:10d:c052:12a:aaa1:59ff:fe88:d39]"
+    host = "2620:10d:c052:12a:aaa1:59ff:fe88:d39"
     print(f"\nConnecting to {host}...")
 
     try:

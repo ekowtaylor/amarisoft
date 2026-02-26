@@ -1,21 +1,31 @@
 #!/usr/bin/env python3
-"""Test script to verify HTTPOverSSHClient connectivity to Amarisoft box."""
+"""Test script to verify HTTPOverSSHClient connectivity to Amarisoft box.
+
+Usage:
+    python test_connectivity.py
+
+Requirements:
+    - sshpass must be installed for password authentication
+    - Network access to the Amarisoft callbox
+"""
+
+from __future__ import annotations
 
 import sys
 
 sys.path.insert(0, ".")
 
-from client.http_ssh import HTTPOverSSHClient
+from client.http_ssh import HTTPOverSSHClient, SSHConnectionError
 
 # Configuration - Update these values for your Amarisoft box
-SSH_HOST = "2620:10d:c052:12a:aaa1:59ff:fe88:d39"  # IPv6 address of Amarisoft box
+SSH_HOST = "2620:10d:c052:12a:aaa1:59ff:fe88:d39"
 SSH_USERNAME = "root"
 SSH_PASSWORD = "toor"
 SSH_KEY_PATH = None
-REMOTE_PORT = 9010  # Default Amarisoft REST API port
+REMOTE_PORT = 9010
 
 
-def main():
+def main() -> int:
     print("=" * 60)
     print("HTTPOverSSHClient Connectivity Test")
     print("=" * 60)
@@ -45,10 +55,13 @@ def main():
     print("\n[2] Establishing SSH tunnel...")
     try:
         client.connect()
-        print(f"    ✓ SSH tunnel established")
+        print("    ✓ SSH tunnel established")
         print(f"    Tunnel: localhost:{client.local_port} -> {SSH_HOST}:{REMOTE_PORT}")
-    except Exception as e:
+    except SSHConnectionError as e:
         print(f"    ✗ Failed to establish tunnel: {e}")
+        return 1
+    except Exception as e:
+        print(f"    ✗ Unexpected error: {e}")
         return 1
 
     # Step 3: Check tunnel is active
@@ -64,28 +77,71 @@ def main():
     print("\n[4] Testing REST API health check...")
     try:
         health = client.health_check()
-        print(f"    ✓ REST API is healthy")
-        print(f"    Response: {health}")
+        status = health.get("status", "unknown")
+        version = health.get("version", "unknown")
+        print("    ✓ REST API is responding")
+        print(f"      Status: {status}")
+        print(f"      Version: {version}")
+
+        callbox = health.get("callbox", {})
+        connected = callbox.get("connected_services", 0)
+        total = callbox.get("total_services", 0)
+        print(f"      Services: {connected}/{total} connected")
     except Exception as e:
         print(f"    ✗ Health check failed: {e}")
         print("    The SSH tunnel works, but REST API may not be running")
 
-    # Step 5: Try to get some stats
-    print("\n[5] Fetching eNB/gNB stats...")
+    # Step 5: Try to get service status
+    print("\n[5] Fetching service status...")
     try:
-        stats = client.get("/")
-        print(f"    ✓ Got response from REST API")
-        print(f"    Response: {stats}")
+        services = client.get("/services")
+        print("    ✓ Got service status")
+
+        for svc_name, svc_info in services.get("services", {}).items():
+            connected = svc_info.get("connected", False)
+            port = svc_info.get("port", "N/A")
+            status_icon = "✓" if connected else "✗"
+            print(f"      {svc_name.upper():4}: {status_icon} (port {port})")
     except Exception as e:
-        print(f"    ✗ Failed to get stats: {e}")
+        print(f"    ✗ Failed to get services: {e}")
+
+    # Step 6: Test eNB stats endpoint
+    print("\n[6] Fetching eNB/gNB stats...")
+    try:
+        stats = client.get("/enb/stats")
+        print("    ✓ Got eNB stats")
+
+        cells = stats.get("cells", {})
+        print(f"      Active cells: {len(cells)}")
+
+        for cell_id, cell_info in list(cells.items())[:3]:
+            dl_bitrate = cell_info.get("dl_bitrate", 0)
+            print(f"      Cell {cell_id}: DL bitrate = {dl_bitrate/1000:.2f} kbps")
+    except Exception as e:
+        print(f"    ✗ Failed to get eNB stats: {e}")
+
+    # Step 7: Test MME UE list endpoint
+    print("\n[7] Fetching MME UE list...")
+    try:
+        ue_data = client.get("/mme/ue")
+        ue_list = ue_data.get("ue_list", [])
+        print(f"    ✓ Got UE list: {len(ue_list)} UE(s)")
+
+        for ue in ue_list[:3]:
+            imsi = ue.get("imsi", "N/A")
+            registered = ue.get("registered", False)
+            status = "registered" if registered else "not registered"
+            print(f"      IMSI {imsi}: {status}")
+    except Exception as e:
+        print(f"    ✗ Failed to get UE list: {e}")
 
     # Cleanup
-    print("\n[6] Closing tunnel...")
+    print("\n[8] Closing tunnel...")
     client.close()
     print("    ✓ Tunnel closed")
 
     print("\n" + "=" * 60)
-    print("Connectivity test completed!")
+    print("Connectivity test completed successfully!")
     print("=" * 60)
     return 0
 
