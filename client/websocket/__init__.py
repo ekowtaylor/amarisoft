@@ -26,21 +26,21 @@ from .capabilities import (
     CellConfig,
     DeviceCapabilities,
     DuplexMode,
+    get_default_capabilities,
     LicenseInfo,
     MIMOConfig,
     RATType,
-    SDRInfo,
-    ServicePorts,
-    ValidationContext,
-    get_default_capabilities,
     require_feature,
     require_service,
+    SDRInfo,
+    ServicePorts,
     validate_bandwidth,
     validate_mcs_param,
     validate_qci_param,
     validate_rf_params,
+    ValidationContext,
 )
-from .client import WebSocketClient
+from .client import ConnectionMethod, WebSocketClient
 from .enb import ENBApi
 from .exceptions import (
     AmariConnectionError,
@@ -49,27 +49,15 @@ from .exceptions import (
     AuthenticationError,
     CommandError,
     InvalidParameterError,
+    ProxyConnectionError,
 )
 from .ims import IMSApi
-from .logging import (
-    LogCollector,
-    LogEntry,
-    TestSession,
-    TestStep,
-    enable_file_logging,
-)
+from .logging import enable_file_logging, LogCollector, LogEntry, TestSession, TestStep
 from .mme import MMEApi
-from .ue import UEApi
 
 # SSH Client (optional, for system administration)
-from .ssh import (
-    NetworkInterface,
-    PCIeDevice,
-    SDRCard,
-    SSHClient,
-    SystemInfo,
-    USBDevice,
-)
+from .ssh import NetworkInterface, PCIeDevice, SDRCard, SSHClient, SystemInfo, USBDevice
+from .ue import UEApi
 
 __all__ = [
     # Version
@@ -77,6 +65,7 @@ __all__ = [
     # Main Classes
     "Callbox",
     "WebSocketClient",
+    "ConnectionMethod",
     # Service APIs
     "ENBApi",
     "MMEApi",
@@ -121,4 +110,5 @@ __all__ = [
     "AuthenticationError",
     "CommandError",
     "InvalidParameterError",
+    "ProxyConnectionError",
 ]

@@ -60,6 +60,8 @@ Then add the `amarisoft` package to your project (or install it in editable mode
 pip install -e .
 ```
 
+> **Note:** The `websocket-client` package is optional if you only use proxy connections (see [Proxy Connections](#proxy-connections) below).
+
 ## Quick Start
 
 ```python
@@ -155,6 +157,119 @@ Enable automatic reconnection when a send fails due to a dropped connection:
 ```python
 cb = Callbox("192.168.1.100", auto_reconnect=True)
 ```
+
+## Proxy Connections
+
+The WebSocket client supports connecting through an HTTP CONNECT proxy, which is useful for accessing Callboxes behind corporate firewalls or in remote networks.
+
+### Basic Proxy Connection
+
+```python
+from amarisoft import WebSocketClient, ENBApi
+
+client = WebSocketClient(
+    host="192.168.1.100",
+    port=9001,
+    connection_method="proxy",
+    proxy_host="proxy.example.com",
+    proxy_port=8082,
+)
+
+with client:
+    enb = ENBApi(client)
+    stats = enb.stats()
+```
+
+### Proxy with TLS and Client Certificate
+
+For proxies requiring mutual TLS authentication:
+
+```python
+client = WebSocketClient(
+    host="2620:10d:c052:12a:aaa1:59ff:fe88:d39",  # IPv6 supported
+    port=9000,
+    connection_method="proxy",
+    proxy_host="0.fwdproxy-regional-corp.example.com",
+    proxy_port=8082,
+    proxy_tls=True,
+    proxy_insecure=True,  # Skip proxy cert verification
+    proxy_client_cert="/var/certs/client.pem",
+    proxy_client_key="/var/certs/client-key.pem",  # Optional if key is in cert file
+)
+```
+
+### Proxy with Callbox
+
+Use proxy connections with the `Callbox` class by passing proxy parameters:
+
+```python
+from amarisoft import Callbox
+
+# Currently, use WebSocketClient directly for proxy connections
+# then pass to service APIs
+from amarisoft import WebSocketClient, ENBApi, MMEApi
+
+enb_client = WebSocketClient(
+    host="192.168.1.100",
+    port=9001,
+    connection_method="proxy",
+    proxy_host="proxy.example.com",
+    proxy_port=8082,
+    proxy_tls=False,
+)
+
+mme_client = WebSocketClient(
+    host="192.168.1.100",
+    port=9000,
+    connection_method="proxy",
+    proxy_host="proxy.example.com",
+    proxy_port=8082,
+    proxy_tls=False,
+)
+
+enb_client.connect()
+mme_client.connect()
+
+enb = ENBApi(enb_client)
+mme = MMEApi(mme_client)
+
+# Use the APIs
+stats = enb.stats()
+ues = mme.ue_get()
+
+enb_client.close()
+mme_client.close()
+```
+
+### Proxy Configuration Options
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `connection_method` | `"direct"` | `"direct"` for standard WebSocket, `"proxy"` for HTTP CONNECT tunnel |
+| `proxy_host` | `None` | Proxy hostname (required when using proxy) |
+| `proxy_port` | `8082` | Proxy port |
+| `proxy_tls` | `True` | Use TLS for the proxy connection |
+| `proxy_insecure` | `True` | Skip certificate verification for proxy TLS |
+| `proxy_client_cert` | `None` | Path to client certificate PEM file |
+| `proxy_client_key` | `None` | Path to separate client key file (optional) |
+| `ws_strict_handshake` | `False` | Enforce RFC 6455 Sec-WebSocket-Accept validation |
+
+### No External Dependencies for Proxy Mode
+
+Proxy connections use raw sockets and don't require the `websocket-client` package:
+
+```python
+# This works without websocket-client installed
+client = WebSocketClient(
+    host="192.168.1.100",
+    port=9001,
+    connection_method="proxy",
+    proxy_host="proxy.example.com",
+    proxy_tls=False,
+)
+```
+
+If you try to use direct connections without `websocket-client` installed, you'll get a helpful error message suggesting to either install the package or use proxy mode.
 
 ## API Reference
 

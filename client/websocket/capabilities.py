@@ -156,6 +156,7 @@ class LicenseInfo:
     rat_support: list[RATType] = field(default_factory=list)
     max_cells: int = 1
     max_bandwidth_mhz: int = 40
+    max_aggregation_mhz: int = 40
     features: dict[str, bool] = field(default_factory=dict)
 
     @property
@@ -193,6 +194,9 @@ class LicenseInfo:
             rat_support=rat_list,
             max_cells=int(data.get("cell_max", 1)),
             max_bandwidth_mhz=int(data.get("bandwidth_max", 40)),
+            max_aggregation_mhz=int(
+                data.get("aggregation_max", data.get("bandwidth_max", 40))
+            ),
         )
 
 
@@ -254,6 +258,7 @@ class DeviceCapabilities:
     # Constraints derived from hardware/license
     max_cells: int = 1
     max_bandwidth_mhz: int = 40
+    max_aggregation_mhz: int = 40
     max_mimo_layers: int = 4
     supported_rats: list[RATType] = field(default_factory=list)
     supported_bands_lte: list[int] = field(default_factory=list)
@@ -383,6 +388,7 @@ class DeviceCapabilities:
                     rat_support=[RATType.LTE],  # Default, could be extended
                     max_cells=1,
                     max_bandwidth_mhz=120,  # Default for Meta license
+                    max_aggregation_mhz=120,  # Default for Meta license
                 )
 
                 # Check for NR support in products
@@ -412,6 +418,8 @@ class DeviceCapabilities:
         # If license info wasn't discovered or has default values, use reasonable defaults
         if self.license_info is None or self.max_bandwidth_mhz <= 40:
             self.max_bandwidth_mhz = 120  # Default for SDR50/SDR100 with Meta license
+        if self.license_info is None or self.max_aggregation_mhz <= 40:
+            self.max_aggregation_mhz = 120  # Default for SDR50/SDR100 with Meta license
         if self.license_info is None or self.max_cells == 0:
             self.max_cells = 1
 
@@ -468,6 +476,7 @@ class DeviceCapabilities:
                 "--- Constraints ---",
                 f"Max Cells: {self.max_cells}",
                 f"Max Bandwidth: {self.max_bandwidth_mhz} MHz",
+                f"Max Aggregation: {self.max_aggregation_mhz} MHz (Σ bandwidth × MIMO)",
                 f"Max MIMO Layers: {self.max_mimo_layers}",
                 f"Supported RATs: {', '.join(r.value for r in self.supported_rats)}",
                 "",
@@ -530,6 +539,7 @@ class DeviceCapabilities:
             "constraints": {
                 "max_cells": self.max_cells,
                 "max_bandwidth_mhz": self.max_bandwidth_mhz,
+                "max_aggregation_mhz": self.max_aggregation_mhz,
                 "max_mimo_layers": self.max_mimo_layers,
                 "supported_rats": [r.value for r in self.supported_rats],
             },
@@ -789,6 +799,73 @@ class CapabilityChecker:
                 f"Valid QCIs: {list(QCI_DEFINITIONS.keys())}"
             )
 
+    def validate_total_aggregation(
+        self,
+        cells: list[dict[str, int | float]] | None = None,
+        total_aggregation_mhz: float | None = None,
+    ) -> None:
+        """Validate total aggregation against license limit.
+
+        Amarisoft licenses limit total aggregation, calculated as:
+            total_aggregation = Σ (cell_bandwidth × MIMO_layers)
+
+        Args:
+            cells: List of cell configurations, each with:
+                - bandwidth_mhz: Cell bandwidth in MHz
+                - mimo_layers: Number of MIMO layers (DL)
+            total_aggregation_mhz: Pre-calculated total aggregation (alternative to cells)
+
+        Raises:
+            InvalidParameterError: If total aggregation exceeds license limit.
+
+        Example:
+            # Validate cell configurations
+            checker.validate_total_aggregation(cells=[
+                {"bandwidth_mhz": 20, "mimo_layers": 2},  # 40 MHz
+                {"bandwidth_mhz": 20, "mimo_layers": 2},  # 40 MHz
+            ])  # Total = 80 MHz
+
+            # Or validate pre-calculated value
+            checker.validate_total_aggregation(total_aggregation_mhz=80)
+        """
+        if total_aggregation_mhz is None and cells is None:
+            raise InvalidParameterError(
+                "Must provide either 'cells' or 'total_aggregation_mhz'"
+            )
+
+        if total_aggregation_mhz is None:
+            total_aggregation_mhz = sum(
+                cell.get("bandwidth_mhz", 0) * cell.get("mimo_layers", 1)
+                for cell in (cells or [])
+            )
+
+        max_aggregation = self.caps.max_aggregation_mhz
+        if total_aggregation_mhz > max_aggregation:
+            raise InvalidParameterError(
+                f"Total aggregation {total_aggregation_mhz} MHz exceeds license limit "
+                f"of {max_aggregation} MHz. "
+                f"Total aggregation = Σ(bandwidth × MIMO_layers). "
+                f"Contact sales@amarisoft.com for license upgrade."
+            )
+
+    def calculate_total_aggregation(
+        self,
+        cells: list[dict[str, int | float]],
+    ) -> float:
+        """Calculate total aggregation for a list of cells.
+
+        Args:
+            cells: List of cell configurations, each with:
+                - bandwidth_mhz: Cell bandwidth in MHz
+                - mimo_layers: Number of MIMO layers (DL)
+
+        Returns:
+            Total aggregation in MHz.
+        """
+        return sum(
+            cell.get("bandwidth_mhz", 0) * cell.get("mimo_layers", 1) for cell in cells
+        )
+
     def validate_service_available(self, service: str) -> None:
         """Check if a service is available.
 
@@ -866,6 +943,7 @@ def get_default_capabilities() -> DeviceCapabilities:
             rat_support=[RATType.LTE, RATType.NR],
             max_cells=1,
             max_bandwidth_mhz=120,
+            max_aggregation_mhz=120,
         ),
         service_ports=ServicePorts(
             enb=9001,
@@ -876,6 +954,7 @@ def get_default_capabilities() -> DeviceCapabilities:
         ),
         max_cells=1,
         max_bandwidth_mhz=120,
+        max_aggregation_mhz=120,
         max_mimo_layers=4,
         supported_rats=[RATType.LTE, RATType.NR],
         features={

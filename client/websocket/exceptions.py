@@ -13,6 +13,10 @@ class AmariConnectionError(AmariError):
     """Raised when a WebSocket connection cannot be established or is lost."""
 
 
+class ProxyConnectionError(AmariConnectionError):
+    """Raised when a proxy tunnel cannot be established."""
+
+
 class AuthenticationError(AmariError):
     """Raised when authentication with the Amarisoft service fails."""
 
