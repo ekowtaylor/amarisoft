@@ -380,6 +380,14 @@ class DeviceCapabilities:
                     p.strip().lower() for p in products_str.split(",") if p.strip()
                 ]
 
+                # Try to get aggregation limit from license data
+                # Note: Amarisoft may not expose this directly via API
+                # The limit is typically only shown in startup logs
+                aggregation_max = license_data.get(
+                    "aggregation_max", license_data.get("bandwidth_max", None)
+                )
+                bandwidth_max = license_data.get("bandwidth_max", None)
+
                 self.license_info = LicenseInfo(
                     user_name=license_data.get("user", "unknown"),
                     license_uid=license_data.get("uid", "unknown"),
@@ -387,8 +395,9 @@ class DeviceCapabilities:
                     products=products,
                     rat_support=[RATType.LTE],  # Default, could be extended
                     max_cells=1,
-                    max_bandwidth_mhz=120,  # Default for Meta license
-                    max_aggregation_mhz=120,  # Default for Meta license
+                    # Use discovered values or None to trigger calculation later
+                    max_bandwidth_mhz=bandwidth_max if bandwidth_max else 0,
+                    max_aggregation_mhz=aggregation_max if aggregation_max else 0,
                 )
 
                 # Check for NR support in products
@@ -400,7 +409,14 @@ class DeviceCapabilities:
             pass
 
     def _calculate_constraints(self) -> None:
-        """Calculate derived constraints from discovered capabilities."""
+        """Calculate derived constraints from discovered capabilities.
+
+        NOTE: License aggregation limits (max_aggregation_mhz) are enforced by
+        Amarisoft at startup and may not be exposed via the Remote API.
+        If not discovered, we use a conservative default of 40 MHz.
+        Check your license or startup logs for the actual limit:
+            grep "aggregation" /tmp/enb.log
+        """
         # Max MIMO from SDR cards
         if self.sdr_cards:
             num_sdr_devices = len(self.sdr_cards) * 2  # Each card = 2 logical devices
@@ -408,18 +424,18 @@ class DeviceCapabilities:
                 self.max_mimo_layers = 8
             elif num_sdr_devices >= 2:
                 self.max_mimo_layers = 4
-            else:
-                self.max_mimo_layers = 2
 
         # Supported RATs (default if not discovered)
         if not self.supported_rats:
             self.supported_rats = [RATType.LTE, RATType.NR]
 
-        # If license info wasn't discovered or has default values, use reasonable defaults
-        if self.license_info is None or self.max_bandwidth_mhz <= 40:
-            self.max_bandwidth_mhz = 120  # Default for SDR50/SDR100 with Meta license
-        if self.license_info is None or self.max_aggregation_mhz <= 40:
-            self.max_aggregation_mhz = 120  # Default for SDR50/SDR100 with Meta license
+        # License constraints - use discovered values or conservative defaults
+        # IMPORTANT: 40 MHz is a common license limit; check your actual license
+        # if you get "License error: total aggregation exceeds limit" errors
+        if self.license_info is None or self.max_bandwidth_mhz <= 0:
+            self.max_bandwidth_mhz = 40  # Conservative default
+        if self.license_info is None or self.max_aggregation_mhz <= 0:
+            self.max_aggregation_mhz = 40  # Conservative default (common limit)
         if self.license_info is None or self.max_cells == 0:
             self.max_cells = 1
 
@@ -942,8 +958,8 @@ def get_default_capabilities() -> DeviceCapabilities:
             products=["ltemme", "lteims", "ltembmsgw", "lteenb", "lteview"],
             rat_support=[RATType.LTE, RATType.NR],
             max_cells=1,
-            max_bandwidth_mhz=120,
-            max_aggregation_mhz=120,
+            max_bandwidth_mhz=40,  # Conservative default - check your license!
+            max_aggregation_mhz=40,  # Conservative default - check your license!
         ),
         service_ports=ServicePorts(
             enb=9001,
@@ -953,8 +969,8 @@ def get_default_capabilities() -> DeviceCapabilities:
             mbms=9004,
         ),
         max_cells=1,
-        max_bandwidth_mhz=120,
-        max_aggregation_mhz=120,
+        max_bandwidth_mhz=40,  # Conservative default - check your license!
+        max_aggregation_mhz=40,  # Conservative default - check your license!
         max_mimo_layers=4,
         supported_rats=[RATType.LTE, RATType.NR],
         features={
@@ -971,6 +987,43 @@ def get_default_capabilities() -> DeviceCapabilities:
         },
     )
 
+    return caps
+
+
+def get_capabilities_with_aggregation_limit(
+    max_aggregation_mhz: int,
+    max_bandwidth_mhz: int | None = None,
+) -> DeviceCapabilities:
+    """Get default capabilities with a specific aggregation limit.
+
+    Use this when you know your license's aggregation limit
+    (e.g., from Amarisoft startup logs showing "License error: ... only allows up to X MHz").
+
+    Args:
+        max_aggregation_mhz: Your license's total aggregation limit in MHz.
+            This is calculated as: Σ(cell_bandwidth × MIMO_layers)
+        max_bandwidth_mhz: Optional per-cell bandwidth limit. Defaults to
+            same as aggregation limit.
+
+    Returns:
+        DeviceCapabilities with the specified limits.
+
+    Example:
+        # If your license shows "only allows up to 40 MHz"
+        caps = get_capabilities_with_aggregation_limit(40)
+        checker = CapabilityChecker(caps)
+
+        # Validate before applying config
+        checker.validate_total_aggregation(cells=[
+            {"bandwidth_mhz": 20, "mimo_layers": 2},  # 40 MHz - OK
+        ])
+    """
+    caps = get_default_capabilities()
+    caps.max_aggregation_mhz = max_aggregation_mhz
+    caps.max_bandwidth_mhz = max_bandwidth_mhz or max_aggregation_mhz
+    if caps.license_info:
+        caps.license_info.max_aggregation_mhz = max_aggregation_mhz
+        caps.license_info.max_bandwidth_mhz = max_bandwidth_mhz or max_aggregation_mhz
     return caps
 
 

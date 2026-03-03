@@ -26,6 +26,7 @@ from .capabilities import (
     CellConfig,
     DeviceCapabilities,
     DuplexMode,
+    get_capabilities_with_aggregation_limit,
     get_default_capabilities,
     LicenseInfo,
     MIMOConfig,
@@ -90,6 +91,7 @@ __all__ = [
     "DuplexMode",
     "MIMOConfig",
     "get_default_capabilities",
+    "get_capabilities_with_aggregation_limit",
     # Validation decorators
     "validate_rf_params",
     "validate_mcs_param",

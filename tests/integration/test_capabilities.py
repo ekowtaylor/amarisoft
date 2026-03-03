@@ -17,6 +17,7 @@ from client.websocket import Callbox
 from client.websocket.capabilities import (
     CapabilityChecker,
     DeviceCapabilities,
+    get_capabilities_with_aggregation_limit,
     get_default_capabilities,
     RATType,
     ValidationContext,
@@ -46,9 +47,21 @@ def default_caps():
 
 
 @pytest.fixture
+def caps_120mhz():
+    """Provide capabilities with 120 MHz aggregation limit."""
+    return get_capabilities_with_aggregation_limit(120)
+
+
+@pytest.fixture
 def checker(default_caps):
-    """Provide a CapabilityChecker with default capabilities."""
+    """Provide a CapabilityChecker with default (40 MHz) capabilities."""
     return CapabilityChecker(default_caps)
+
+
+@pytest.fixture
+def checker_120mhz(caps_120mhz):
+    """Provide a CapabilityChecker with 120 MHz aggregation limit."""
+    return CapabilityChecker(caps_120mhz)
 
 
 # ══════════════════════════════════════════════════════════════
@@ -92,7 +105,8 @@ class TestDefaultCapabilities:
         caps = get_default_capabilities()
 
         assert caps.max_cells == 1
-        assert caps.max_bandwidth_mhz == 120
+        assert caps.max_bandwidth_mhz == 40  # Conservative default
+        assert caps.max_aggregation_mhz == 40  # Conservative default
         assert caps.max_mimo_layers == 4
 
     def test_features(self):
@@ -215,34 +229,34 @@ class TestCapabilityChecker:
             checker.validate_qci(99)
         assert "not a standard QCI value" in str(exc_info.value)
 
-    def test_valid_total_aggregation(self, checker):
+    def test_valid_total_aggregation(self, checker_120mhz):
         """Valid total aggregation should pass."""
         # Total = 20*2 + 20*2 = 80 MHz, within 120 MHz limit
-        checker.validate_total_aggregation(
+        checker_120mhz.validate_total_aggregation(
             cells=[
                 {"bandwidth_mhz": 20, "mimo_layers": 2},
                 {"bandwidth_mhz": 20, "mimo_layers": 2},
             ]
         )
 
-    def test_valid_total_aggregation_single_cell(self, checker):
+    def test_valid_total_aggregation_single_cell(self, checker_120mhz):
         """Single cell with high bandwidth and MIMO should pass."""
         # Total = 40*2 = 80 MHz, within 120 MHz limit
-        checker.validate_total_aggregation(
+        checker_120mhz.validate_total_aggregation(
             cells=[
                 {"bandwidth_mhz": 40, "mimo_layers": 2},
             ]
         )
 
-    def test_valid_total_aggregation_precalculated(self, checker):
+    def test_valid_total_aggregation_precalculated(self, checker_120mhz):
         """Pre-calculated total aggregation should pass."""
-        checker.validate_total_aggregation(total_aggregation_mhz=100)
+        checker_120mhz.validate_total_aggregation(total_aggregation_mhz=100)
 
-    def test_invalid_total_aggregation(self, checker):
+    def test_invalid_total_aggregation(self, checker_120mhz):
         """Total aggregation exceeding license should fail."""
         # Total = 40*2 + 40*2 = 160 MHz, exceeds 120 MHz limit
         with pytest.raises(InvalidParameterError) as exc_info:
-            checker.validate_total_aggregation(
+            checker_120mhz.validate_total_aggregation(
                 cells=[
                     {"bandwidth_mhz": 40, "mimo_layers": 2},
                     {"bandwidth_mhz": 40, "mimo_layers": 2},
@@ -251,35 +265,53 @@ class TestCapabilityChecker:
         assert "exceeds license limit" in str(exc_info.value)
         assert "120 MHz" in str(exc_info.value)
 
-    def test_invalid_total_aggregation_precalculated(self, checker):
+    def test_invalid_total_aggregation_precalculated(self, checker_120mhz):
         """Pre-calculated aggregation exceeding license should fail."""
         with pytest.raises(InvalidParameterError) as exc_info:
-            checker.validate_total_aggregation(total_aggregation_mhz=200)
+            checker_120mhz.validate_total_aggregation(total_aggregation_mhz=200)
         assert "exceeds license limit" in str(exc_info.value)
 
-    def test_total_aggregation_no_args(self, checker):
+    def test_total_aggregation_no_args(self, checker_120mhz):
         """Missing both args should fail."""
         with pytest.raises(InvalidParameterError) as exc_info:
-            checker.validate_total_aggregation()
+            checker_120mhz.validate_total_aggregation()
         assert "Must provide" in str(exc_info.value)
 
-    def test_calculate_total_aggregation(self, checker):
+    def test_calculate_total_aggregation(self, checker_120mhz):
         """Calculate method should sum bandwidth*mimo correctly."""
         cells = [
             {"bandwidth_mhz": 20, "mimo_layers": 2},  # 40
             {"bandwidth_mhz": 40, "mimo_layers": 2},  # 80
         ]
-        total = checker.calculate_total_aggregation(cells)
+        total = checker_120mhz.calculate_total_aggregation(cells)
         assert total == 120
 
-    def test_calculate_total_aggregation_default_mimo(self, checker):
+    def test_calculate_total_aggregation_default_mimo(self, checker_120mhz):
         """Missing mimo_layers should default to 1."""
         cells = [
             {"bandwidth_mhz": 20},  # 20 * 1 = 20
             {"bandwidth_mhz": 40, "mimo_layers": 2},  # 80
         ]
-        total = checker.calculate_total_aggregation(cells)
+        total = checker_120mhz.calculate_total_aggregation(cells)
         assert total == 100
+
+    def test_aggregation_with_40mhz_license(self, checker):
+        """Test aggregation validation with 40 MHz license (conservative default)."""
+        # 20*2 = 40 MHz - exactly at limit, should pass
+        checker.validate_total_aggregation(
+            cells=[{"bandwidth_mhz": 20, "mimo_layers": 2}]
+        )
+
+        # 20*2 + 20*2 = 80 MHz - exceeds 40 MHz limit
+        with pytest.raises(InvalidParameterError) as exc_info:
+            checker.validate_total_aggregation(
+                cells=[
+                    {"bandwidth_mhz": 20, "mimo_layers": 2},
+                    {"bandwidth_mhz": 20, "mimo_layers": 2},
+                ]
+            )
+        assert "exceeds license limit" in str(exc_info.value)
+        assert "40 MHz" in str(exc_info.value)
 
     def test_get_qci_info(self, checker):
         """QCI info lookup should work."""
