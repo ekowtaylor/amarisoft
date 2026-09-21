@@ -8,6 +8,8 @@ Working config: [`configs/gnb-sa-n71-working.cfg`](configs/gnb-sa-n71-working.cf
 **Recommended:** [`configs/gnb-sa-n71-tuned.cfg`](configs/gnb-sa-n71-tuned.cfg), the same config with closed-loop UL power control
 (`dpc_snr_target` PUSCH 20 / PUCCH 15). It fixes UL SNR (≈0 → 11–17 dB) and DL HARQ/CQI loss. iperf3: DL 63.7 / UL 11.4 Mbit/s.
 See [`perf/RESULTS.md`](perf/RESULTS.md).
+Alternative: [`configs/gnb-sa-n71-ulmimo.cfg`](configs/gnb-sa-n71-ulmimo.cfg) (+SRS). UL MIMO does not engage because the UE is
+limited to 1 UL layer, but UL throughput rises to ~18 Mbit/s at the cost of ~90 % UL HARQ retransmissions.
 
 ## Setup
 
