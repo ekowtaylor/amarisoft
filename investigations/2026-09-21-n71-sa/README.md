@@ -5,6 +5,9 @@
 **Result:** Working, but only when the SSB is kept out of **~625–635 MHz**. With the SSB there, the phone never
 attempts access to the cell (no PRACH), although n71 is supported (UE capability) and allowed for SA (modem policy).
 Working config: [`configs/gnb-sa-n71-working.cfg`](configs/gnb-sa-n71-working.cfg) (carrier 632–652 MHz, `gscn: 1602` → SSB 640.95 MHz).
+**Recommended:** [`configs/gnb-sa-n71-tuned.cfg`](configs/gnb-sa-n71-tuned.cfg), the same config with closed-loop UL power control
+(`dpc_snr_target` PUSCH 20 / PUCCH 15). It fixes UL SNR (≈0 → 11–17 dB) and DL HARQ/CQI loss. iperf3: DL 63.7 / UL 11.4 Mbit/s.
+See [`perf/RESULTS.md`](perf/RESULTS.md).
 
 ## Setup
 
@@ -28,6 +31,7 @@ Working config: [`configs/gnb-sa-n71-working.cfg`](configs/gnb-sa-n71-working.cf
 | [`gnb-sa-n77.cfg`](configs/gnb-sa-n77.cfg) n77 40 MHz 1x1 (stock template, band 78→77) | TDD / 30 kHz | 3479.52 MHz | ✅ 24 s |
 | [`enb-b71.cfg`](configs/enb-b71.cfg) **LTE** B71 5 MHz @ 634.5 MHz | FDD | — | ✅ RSRP −62 dBm, SNR 29 dB |
 | [`gnb-sa-n71-working.cfg`](configs/gnb-sa-n71-working.cfg) n71 20 MHz 2x2, `gscn: 1602` | FDD / 15 kHz | 640.95 MHz | ✅ 24 s, RI=2, data OK |
+| [`gnb-sa-n71-tuned.cfg`](configs/gnb-sa-n71-tuned.cfg) as above + closed-loop UL PC | FDD / 15 kHz | 640.95 MHz | ✅ 15 s; UL SNR 11–17 dB, DL MCS ~20, retx ~10 % |
 
 ## n71 SSB sweep ([`sweep/sweep.csv`](sweep/sweep.csv), script [`sweep/ssb_sweep.sh`](sweep/ssb_sweep.sh))
 
