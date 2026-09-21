@@ -1,0 +1,141 @@
+20:04:09.771 [NAS] UL 0064 EMM: Attach request
+        Protocol discriminator = 0x7 (EPS Mobility Management)
+        Security header = 0x0 (Plain NAS message, not security protected)
+        Message type = 0x41 (Attach request)
+        EPS attach type = 2 (combined EPS/IMSI attach)
+        NAS key set identifier:
+          TSC = 0
+          NAS key set identifier = 7
+        Old GUTI or IMSI:
+          IMSI = 001010123456789
+        UE network capability:
+          0xf0 (EEA0=1, 128-EEA1=1, 128-EEA2=1, 128-EEA3=1, EEA4=0, EEA5=0, EEA6=0, EEA7=0)
+          0x70 (EIA0=0, 128-EIA1=1, 128-EIA2=1, 128-EIA3=1, EIA4=0, EIA5=0, EIA6=0, EPS-UPIP=0)
+          0xc0 (UEA0=1, UEA1=1, UEA2=0, UEA3=0, UEA4=0, UEA5=0, UEA6=0, UEA7=0)
+          0x40 (UCS2=0, UIA1=1, UIA2=0, UIA3=0, UIA4=0, UIA5=0, UIA6=0, UIA7=0)
+          0x19 (ProSe-dd=0, ProSe=0, H.245-ASH=0, ACC-CSFB=1, LPP=1, LCS=0, 1xSRVCC=0, NF=1)
+          0x80 (ePCO=1, HC-CP CIoT=0, ERw/oPDN=0, S1-U data=0, UP CIoT=0, CP CIoT=0, ProSe-relay=0, ProSe-dc=0)
+          0xb0 (15 bearers=1, SGC=0, N1mode=1, DCNR=1, CP backoff=0, RestrictEC=0, V2X PC5=0, multipleDRB=0)
+        ESM message container:
+          Protocol discriminator = 0x2 (EPS Session Management)
+          EPS bearer identity = 0
+          Procedure transaction identity = 1
+          Message type = 0xd0 (PDN connectivity request)
+          Request type = 1 (initial request)
+          PDN type = 2 (IPv6)
+          ESM information transfer flag = 1
+          Protocol configuration options:
+            Ext = 1
+            Configuration protocol = 0
+            Protocol ID = 0x0003 (DNS Server IPv6 Address Request)
+            Data =
+            Protocol ID = 0x0001 (P-CSCF IPv6 Address Request)
+            Data =
+            Protocol ID = 0x0012 (P-CSCF Re-selection support)
+            Data =
+            Protocol ID = 0x000a (IP address allocation via NAS signalling)
+            Data =
+            Protocol ID = 0x0005 (MS Support of Network Requested Bearer Control indicator)
+            Data =
+            Protocol ID = 0x0010 (IPv4 Link MTU Request)
+            Data =
+            Protocol ID = 0x0011 (MS support of Local address in TFT indicator)
+            Data =
+            Protocol ID = 0x001a (PDU session ID)
+            Data = 1
+            Protocol ID = 0x0023 (QoS rules with the length of two octets support indicator)
+            Data =
+            Protocol ID = 0x0024 (QoS flow descriptions with the length of two octets support indicator)
+            Data =
+        DRX parameter:
+          Data = 0a 00
+        MS network capability:
+          Length = 4
+          Data = 65 a0 3e 01
+        TMSI status = 0
+        Mobile station classmark 2:
+          Length = 3
+          Data = 57 58 a6
+        Mobile station classmark 3:
+          Length = 12
+          Data = 61 14 04 e2 91 81 00 12 1e 10 00 00
+        Supported codecs:
+          Length = 8
+          Data = 04 02 60 04 00 02 1f 00
+        Voice domain preference and UE's usage setting = 0x03 (IMS PS voice preferred, CS Voice as secondary, Voice centric)
+        UE additional security capability:
+          0xf0 (5G-EA0=1, 128-5G-EA1=1, 128-5G-EA2=1, 128-5G-EA3=1, 5G-EA4=0, 5G-EA5=0, 5G-EA6=0, 5G-EA7=0)
+          0x00 (5G-EA8=0, 5G-EA9=0, 5G-EA10=0, 5G-EA11=0, 5G-EA12=0, 5G-EA13=0, 5G-EA14=0, 5G-EA15=0)
+          0x70 (5G-IA0=0, 128-5G-IA1=1, 128-5G-IA2=1, 128-5G-IA3=1, 5G-IA4=0, 5G-IA5=0, 5G-IA6=0, 5G-IA7=0)
+          0x00 (5G-IA8=0, 5G-IA9=0, 5G-IA10=0, 5G-IA11=0, 5G-IA12=0, 5G-IA13=0, 5G-IA14=0, 5G-IA15=0)
+20:04:09.771 [NAS] -  0064 EPS encryption caps=0xf0 integrity caps=0x70
+20:04:09.771 [NAS] -  0064 5GS encryption caps=0xf000 integrity caps=0x7000
+20:04:09.771 [NAS] DL 0064 EMM: Authentication request
+        Protocol discriminator = 0x7 (EPS Mobility Management)
+        Security header = 0x0 (Plain NAS message, not security protected)
+        Message type = 0x52 (Authentication request)
+        NAS key set identifier:
+          TSC = 0
+          NAS key set identifier = 0
+        Authentication parameter RAND:
+          Data = 9e ae bb 4e e1 38 ca 3a 5c 1b 98 c0 16 ab 80 db
+        Authentication parameter AUTN:
+          Length = 16
+          Data = 7d a5 6d ac 4d f5 90 01 9e bf 99 7d a5 4c 3c 4c
+20:04:09.771 [S1AP] TO 0064 0001 127.0.1.1:49161 Downlink NAS transport
+        initiatingMessage: {
+          procedureCode id-downlinkNASTransport,
+          criticality ignore,
+          value {
+            protocolIEs {
+              {
+                id id-MME-UE-S1AP-ID,
+                criticality reject,
+                value 100
+              },
+              {
+                id id-eNB-UE-S1AP-ID,
+                criticality reject,
+                value 1
+              },
+              {
+                id id-NAS-PDU,
+                criticality reject,
+                value '0752009EAEBB4EE138CA3A5C1B98C016AB80DB107DA56DAC4DF590019EBF997DA54C3C4C'H
+              }
+            }
+          }
+        }
+
+20:04:09.771 [S1AP] FROM 0064 0001 127.0.1.1:49161 Uplink NAS transport
+        initiatingMessage: {
+          procedureCode id-uplinkNASTransport,
+          criticality ignore,
+          value {
+            protocolIEs {
+              {
+                id id-MME-UE-S1AP-ID,
+                criticality reject,
+                value 100
+              },
+              {
+                id id-eNB-UE-S1AP-ID,
+                criticality reject,
+                value 1
+              },
+              {
+                id id-NAS-PDU,
+                criticality reject,
+                value '0753089EBF997DA56DAC4D'H
+              },
+              {
+                id id-EUTRAN-CGI,
+                criticality ignore,
+                value {
+                  pLMNidentity '00F110'H,
+                  cell-ID '1A2D001'H
+                }
+              },
+              {
+                id id-TAI,
+                criticality ignore,

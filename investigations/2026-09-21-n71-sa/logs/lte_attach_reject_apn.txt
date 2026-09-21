@@ -1,0 +1,25 @@
+20:04:09.771 [NAS] DL 0064 EMM: Attach reject
+        Protocol discriminator = 0x7 (EPS Mobility Management)
+        Security header = 0x2 (Integrity protected and ciphered)
+        Auth code = 0x8771839a
+        Sequence number = 0x02
+        Protocol discriminator = 0x7 (EPS Mobility Management)
+        Security header = 0x0 (Plain NAS message, not security protected)
+        Message type = 0x44 (Attach reject)
+        EMM cause = 0x13 (ESM failure)
+        ESM message container:
+          Protocol discriminator = 0x2 (EPS Session Management)
+          EPS bearer identity = 0
+          Procedure transaction identity = 1
+886-          Procedure transaction identity = 1
+887-          Message type = 0xd1 (PDN connectivity reject)
+888:          ESM cause = 0x1b (Missing or unknown APN)
+889-          Extended protocol configuration options:
+890-            Ext = 1
+891-            Configuration protocol = 0
+--
+1514-          Procedure transaction identity = 2
+1515-          Message type = 0xd1 (PDN connectivity reject)
+1516:          ESM cause = 0x1b (Missing or unknown APN)
+1517-          Extended protocol configuration options:
+1518-            Ext = 1
