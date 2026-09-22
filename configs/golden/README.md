@@ -51,6 +51,7 @@ driver for its vendor-class ports, so AT commands went directly to USB interface
 Notes:
 - The module's default context had an empty APN, which gave an IMS-only session. It needs `internet` for data.
 - Both test UEs share test IMSI 001010123456789. The `ue_db` entry has `multi_sim: true` (experimental). Separate IMSIs are safer.
+  See [`docs/multi-sim-same-imsi.md`](../../docs/multi-sim-same-imsi.md).
 - Not tested: RedCap throughput (iperf3 needs a host with a `qmi_wwan`/RmNet driver, e.g. Linux), HD-FDD RedCap UEs, 1Rx RedCap UEs.
 
 ### Deploy
