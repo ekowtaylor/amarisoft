@@ -65,5 +65,7 @@ ssh root@<callbox> 'ln -sfn gnb-sa-n71-golden.cfg /root/enb/config/enb.cfg && sy
 
 - UL MCS stays well below what the measured SNR supports; suspected live T-Mobile n71 UL interference over the air ([#5](https://github.com/ekowtaylor/amarisoft/issues/5)). Re-validate cabled or in a shield box.
 - n71 is licensed US carrier spectrum. Use a shielded or cabled setup.
+- The callbox needs internet for its floating license (the stack won't start without it) and for UE data. See
+  [`docs/host-network-setup.md`](../../docs/host-network-setup.md) for sharing the Mac's internet.
 - Validated with the SM-S936U1 (eMBB) and the SIM8230G (RedCap, 2Rx FD-FDD). Re-validate with other UEs.
 - Full investigation: [`investigations/2026-09-21-n71-sa/`](../../investigations/2026-09-21-n71-sa/)
