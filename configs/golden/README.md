@@ -9,7 +9,7 @@ Validated reference configs for the Amarisoft Callbox Mini (lteenb/ltemme 2024-0
 | Band / duplex / SCS | n71 FDD, 15 kHz | |
 | Bandwidth / MIMO | 20 MHz, DL 2x2, UL 1 layer | UE reaches DL rank 2 |
 | Carrier | `dl_nr_arfcn: 128400` (DL 632–652, UL 678–698 MHz) | |
-| **SSB** | **`gscn: 1602` → 640.95 MHz** | **Required.** SSBs at ~625–635 MHz are never accessed by the SM-S936U1 ([#2](https://github.com/ekowtaylor/amarisoft/issues/2)). The automatic SSB lands at 633.75 MHz. |
+| **SSB** | **`ssb_nr_arfcn: 128190` → 640.95 MHz** (== GSCN 1602) | **Required.** SSBs at ~625–635 MHz are never accessed by the SM-S936U1 ([#2](https://github.com/ekowtaylor/amarisoft/issues/2)). The automatic SSB lands at 633.75 MHz. **Spell it `ssb_nr_arfcn`, not `gscn`** — see the release note below. |
 | **UL power control** | **closed loop: `pusch.dpc_snr_target: 20`, `pucch.dpc_snr_target: 15`** | **Required.** Open loop leaves UL SNR ≈ 0 dB, and DL CQI/HARQ feedback is lost ([#5](https://github.com/ekowtaylor/amarisoft/issues/5)). |
 | SRS | off (`USE_SRS 0`) | The SM-S936U1 supports 1 UL layer only; SRS only makes UL link adaptation aggressive (~90 % retx). |
 | **RedCap** | **`redcap_ue: { half_duplex: {} }`** | RedCap UEs (1Rx and 2Rx, FD-FDD and HD-FDD) allowed. At 20 MHz they use the initial BWP. |
@@ -54,12 +54,48 @@ Notes:
   See [`docs/multi-sim-same-imsi.md`](../../docs/multi-sim-same-imsi.md).
 - Not tested: RedCap throughput (iperf3 needs a host with a `qmi_wwan`/RmNet driver, e.g. Linux), HD-FDD RedCap UEs, 1Rx RedCap UEs.
 
+### Release note: `gscn` vs `ssb_nr_arfcn`
+
+This config was validated on **lteenb 2024-09-13**, where the SSB can be pinned with `gscn: 1602`.
+**`gscn` does not exist on the 2025 releases.** It appears 0 times in the reference configs of both
+2025-06-13 and 2025-09-19, against 3–11 occurrences of `ssb_nr_arfcn`. A config carrying `gscn`
+therefore fails at config parse on those releases, and since the deploy below restarts the stack,
+**the cell does not come back up**.
+
+`ssb_nr_arfcn: 128190` == GSCN 1602 == 640.95 MHz, and is what this config now uses. Verified on
+lteenb 2025-09-19 on four callboxes (2026-09-22). Not re-verified on 2024-09-13 — if you are still
+on that release and it rejects `ssb_nr_arfcn`, `gscn: 1602` is the equivalent.
+
+Stock configs of the 2025 releases also ship a commented hook, which is the least invasive way to
+pin the SSB in an existing config without editing the cell block:
+
+```c
+//#define SSB_NR_ARFCN       0     ->    #define SSB_NR_ARFCN       128190
+```
+
 ### Deploy
 
+**Check the release first**, and keep a rollback. `lteenb -d` (dry-run config validator) **cannot be
+used on a running box** — it needs a license seat and each box's seat is held by its own running
+instance, so it fails on the license before it ever parses the config.
+
 ```sh
+# 0. release check: expect ssb_nr_arfcn to be the supported spelling on 2025.x
+ssh root@<callbox> 'grep -rc ssb_nr_arfcn /root/enb/config/*.cfg | grep -v :0 | head -1'
+
+# 1. back up whatever is live now (follow the symlink -- on some boxes enb.cfg IS a symlink)
+ssh root@<callbox> 'f=$(readlink -f /root/enb/config/enb.cfg); cp -a "$f" "$f.bak-$(date +%Y%m%d)"'
+
+# 2. install and restart
 scp gnb-sa-n71.cfg root@<callbox>:/root/enb/config/gnb-sa-n71-golden.cfg
 ssh root@<callbox> 'ln -sfn gnb-sa-n71-golden.cfg /root/enb/config/enb.cfg && systemctl restart lte'
+
+# 3. verify the cell actually came up with the intended carrier and SSB
+ssh root@<callbox> 'grep -m1 "^# Cell 0x01" /tmp/gnb0.log'
+#   expect: nr_arfcn=128400 ... ssb_arfcn=128190
 ```
+
+If step 3 prints nothing, the ENB did not start — restore the backup from step 1 and restart.
 
 ### Known limits and open items
 
